@@ -1,0 +1,43 @@
+# Go
+*.exe
+*.test
+*.out
+
+# Dossiers temporaires
+.tmp-go-build*/
+.tmp-go-test*/
+.tmp-terraform-validation/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.tfstate.lock.info
+.terraform.lock.hcl
+
+# Variables sensibles
+terraform.tfvars
+terraform.tfvars.json
+*.auto.tfvars
+*.auto.tfvars.json
+
+# Fichiers temporaires
+request.json
+generated_requests/
+*.bak
+*.backup
+*.tmp
+*.log
+
+# IDE et système
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
