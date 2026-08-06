@@ -115,6 +115,11 @@ func PrepareRootModule(
 	if err != nil {
 		return Plan{}, err
 	}
+	previousManagedVariables := reconcileManagedRoot(
+		rootMain,
+		rootVariables,
+		rootOutputs,
+	)
 
 	infos := make(map[string]*moduleInfo)
 	for _, moduleName := range ModuleNames {
@@ -135,6 +140,7 @@ func PrepareRootModule(
 
 	rootVariableOwners := make(map[string]string)
 	rootOutputOwners := make(map[string]string)
+	desiredRootVariables := make(map[string]struct{})
 	for _, moduleName := range ModuleNames {
 		info := infos[moduleName]
 		if !info.useful {
@@ -160,6 +166,7 @@ func PrepareRootModule(
 				attributes[name] = dependency
 			} else {
 				attributes[name] = VariableTraversal(name)
+				desiredRootVariables[name] = struct{}{}
 				if err := ensureClonedVariable(rootVariables, variable, name); err != nil {
 					report.Conflicts = append(report.Conflicts, err.Error())
 				} else if !variableAlreadyPresent {
@@ -209,6 +216,11 @@ func PrepareRootModule(
 			}
 		}
 	}
+	for name := range previousManagedVariables {
+		if _, desired := desiredRootVariables[name]; !desired {
+			rootTfvars.Body().RemoveAttribute(name)
+		}
+	}
 
 	prepared[filepath.Join(rootPath, "main.tf")] = formatted(rootMain)
 	prepared[filepath.Join(rootPath, "variables.tf")] = formatted(rootVariables)
@@ -221,6 +233,64 @@ func PrepareRootModule(
 	classifyFiles(prepared, &report)
 	report.normalize()
 	return Plan{Prepared: prepared, Directories: directories, Report: report}, nil
+}
+
+// reconcileManagedRoot removes only data previously generated from canonical
+// module calls. The desired state is rebuilt immediately afterwards, which
+// lets Delete remove stale inputs and re-exported outputs atomically.
+func reconcileManagedRoot(
+	rootMain *hclwrite.File,
+	rootVariables *hclwrite.File,
+	rootOutputs *hclwrite.File,
+) map[string]struct{} {
+	managedVariables := make(map[string]struct{})
+	for _, block := range append([]*hclwrite.Block(nil), rootMain.Body().Blocks()...) {
+		if block.Type() != "module" || len(block.Labels()) != 1 ||
+			!validModuleName(block.Labels()[0]) {
+			continue
+		}
+		for name, attribute := range block.Body().Attributes() {
+			if name == "source" {
+				continue
+			}
+			traversals := attribute.Expr().Variables()
+			if len(traversals) != 1 {
+				continue
+			}
+			text := strings.TrimSpace(string(traversals[0].BuildTokens(nil).Bytes()))
+			if strings.HasPrefix(text, "var.") && strings.Count(text, ".") == 1 {
+				managedVariables[strings.TrimPrefix(text, "var.")] = struct{}{}
+			}
+		}
+		rootMain.Body().RemoveBlock(block)
+	}
+
+	for _, block := range append([]*hclwrite.Block(nil), rootOutputs.Body().Blocks()...) {
+		if block.Type() != "output" || len(block.Labels()) != 1 {
+			continue
+		}
+		value := block.Body().GetAttribute("value")
+		if value == nil {
+			continue
+		}
+		for _, traversal := range value.Expr().Variables() {
+			text := strings.TrimSpace(string(traversal.BuildTokens(nil).Bytes()))
+			parts := strings.Split(text, ".")
+			if len(parts) >= 3 && parts[0] == "module" && validModuleName(parts[1]) {
+				rootOutputs.Body().RemoveBlock(block)
+				break
+			}
+		}
+	}
+
+	for _, block := range append([]*hclwrite.Block(nil), rootVariables.Body().Blocks()...) {
+		if block.Type() == "variable" && len(block.Labels()) == 1 {
+			if _, managed := managedVariables[block.Labels()[0]]; managed {
+				rootVariables.Body().RemoveBlock(block)
+			}
+		}
+	}
+	return managedVariables
 }
 
 // AnalyzeMigration projette la phase B en memoire. Les fichiers historiques

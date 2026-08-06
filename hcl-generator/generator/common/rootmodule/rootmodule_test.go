@@ -151,6 +151,100 @@ func TestRootTfvarsCollisionIsReportedWithoutOverwrite(t *testing.T) {
 	}
 }
 
+func TestPrepareRootModuleRemovesStaleManagedDataAfterDelete(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "generated", "gcp")
+	write(t, filepath.Join(root, "main.tf"), `module "storage" {
+  source      = "./modules/storage"
+  bucket_name = var.bucket_name
+}
+`)
+	write(t, filepath.Join(root, "variables.tf"), `variable "bucket_name" { type = string }
+`)
+	write(t, filepath.Join(root, "terraform.tfvars"), `bucket_name = "fixture"
+`)
+	write(t, filepath.Join(root, "outputs.tf"), `output "bucket_id" {
+  value = module.storage.bucket_id
+}
+`)
+
+	plan, err := rootmodule.PrepareRootModule(root, "gcp", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"main.tf", "variables.tf", "terraform.tfvars", "outputs.tf"} {
+		if len(bytes.TrimSpace(plan.Prepared[filepath.Join(root, name)])) != 0 {
+			t.Fatalf("stale managed data remains in %s", name)
+		}
+	}
+}
+
+func TestRootModuleDependencyUsesTraversal(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "generated", "gcp")
+	modulePath := filepath.Join(root, "modules", "network")
+	write(t, filepath.Join(root, "main.tf"), `module "network" {
+  source = "./modules/network"
+}
+module "compute" {
+  source  = "./modules/compute"
+  network = module.network.vpc_backend_01_id
+}
+`)
+	referenced, err := rootmodule.ModuleOutputsReferencedByAnotherModule(
+		modulePath, "network", []string{"vpc_backend_01_id"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !referenced {
+		t.Fatal("inter-module traversal was not detected")
+	}
+}
+
+func TestPrepareFilteredMigrationKeepsFixturesInLegacyFiles(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "generated", "gcp")
+	legacy := filepath.Join(root, "network")
+	write(t, filepath.Join(legacy, "main.tf"), `resource "google_compute_network" "vpc_test_01" {
+  name = var.vpc_test_01_name
+}
+resource "google_compute_network" "vpc_backend_01" {
+  name = var.vpc_backend_01_name
+}
+`)
+	write(t, filepath.Join(legacy, "variables.tf"), `variable "vpc_test_01_name" { type = string }
+variable "vpc_backend_01_name" { type = string }
+`)
+	write(t, filepath.Join(legacy, "terraform.tfvars"), `vpc_test_01_name = "fixture"
+vpc_backend_01_name = "backend"
+`)
+	write(t, filepath.Join(legacy, "outputs.tf"), `output "vpc_test_01_id" { value = google_compute_network.vpc_test_01.id }
+output "vpc_backend_01_id" { value = google_compute_network.vpc_backend_01.id }
+`)
+
+	plan, err := rootmodule.PrepareFilteredMigration(root, "gcp", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.Report.HasConflicts() {
+		t.Fatalf("unexpected conflicts: %v", plan.Report.Conflicts)
+	}
+	legacyMain := string(plan.Prepared[filepath.Join(legacy, "main.tf")])
+	canonicalMain := string(plan.Prepared[filepath.Join(root, "modules", "network", "main.tf")])
+	if !strings.Contains(legacyMain, `"vpc_test_01"`) || strings.Contains(legacyMain, `"vpc_backend_01"`) {
+		t.Fatalf("legacy partition is incorrect: %s", legacyMain)
+	}
+	if strings.Contains(canonicalMain, `"vpc_test_01"`) || !strings.Contains(canonicalMain, `"vpc_backend_01"`) {
+		t.Fatalf("canonical partition is incorrect: %s", canonicalMain)
+	}
+	rootTfvars := string(plan.Prepared[filepath.Join(root, "terraform.tfvars")])
+	legacyTfvars := string(plan.Prepared[filepath.Join(legacy, "terraform.tfvars")])
+	if !strings.Contains(rootTfvars, "vpc_backend_01_name") || strings.Contains(rootTfvars, "vpc_test_01_name") {
+		t.Fatalf("root tfvars partition is incorrect: %s", rootTfvars)
+	}
+	if !strings.Contains(legacyTfvars, "vpc_test_01_name") || strings.Contains(legacyTfvars, "vpc_backend_01_name") {
+		t.Fatalf("legacy tfvars partition is incorrect: %s", legacyTfvars)
+	}
+}
+
 func parse(t *testing.T, content []byte) *hclwrite.File {
 	t.Helper()
 	file, diagnostics := hclwrite.ParseConfig(content, "test.tf", hcl.InitialPos)

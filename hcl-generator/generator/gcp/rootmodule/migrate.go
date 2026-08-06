@@ -19,3 +19,16 @@ func AnalyzeGCPMigration(rootPath string) (commonroot.Plan, error) {
 	commonroot.AddPreparedFiles(&plan, base)
 	return plan, nil
 }
+
+func PrepareGCPFilteredMigration(rootPath string) (commonroot.Plan, error) {
+	base, err := gcprootconfig.PrepareGCPRootConfiguration(rootPath)
+	if err != nil {
+		return commonroot.Plan{}, err
+	}
+	plan, err := commonroot.PrepareFilteredMigration(rootPath, "gcp", base)
+	if err != nil {
+		return commonroot.Plan{}, err
+	}
+	commonroot.AddPreparedFiles(&plan, base)
+	return plan, nil
+}

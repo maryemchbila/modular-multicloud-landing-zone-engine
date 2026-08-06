@@ -4,20 +4,3 @@ resource "google_storage_bucket" "bucket_test_01" {
   storage_class               = var.bucket_test_01_storage_class
   uniform_bucket_level_access = var.bucket_test_01_uniform_bucket_level_access
 }
-
-
-resource "google_storage_bucket" "bucket_archive_01" {
-  name                        = var.bucket_archive_01_name
-  location                    = var.bucket_archive_01_location
-  storage_class               = var.bucket_archive_01_storage_class
-  uniform_bucket_level_access = var.bucket_archive_01_uniform_bucket_level_access
-}
-
-
-resource "google_storage_bucket" "bucket_logs_01" {
-  name                        = var.bucket_logs_01_name
-  location                    = var.bucket_logs_01_location
-  storage_class               = var.bucket_logs_01_storage_class
-  uniform_bucket_level_access = var.bucket_logs_01_uniform_bucket_level_access
-}
-

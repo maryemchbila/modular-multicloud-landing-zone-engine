@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"hcl-generator/generator/common"
+	commonroot "hcl-generator/generator/common/rootmodule"
 	"hcl-generator/models"
 
 	"github.com/hashicorp/hcl/v2"
@@ -63,6 +64,20 @@ func ApplyDelete(files *common.TerraformFiles, request *models.Request) error {
 	) {
 		return fmt.Errorf(
 			"Cannot delete network %s: resource is referenced by another block",
+			resource.ResourceName,
+		)
+	}
+	rootReferenced, err := commonroot.ModuleOutputsReferencedByAnotherModule(
+		request.ModulePath,
+		"network",
+		[]string{resource.ResourceName + "_id", resource.SubnetResourceName + "_id"},
+	)
+	if err != nil {
+		return err
+	}
+	if rootReferenced {
+		return fmt.Errorf(
+			"Cannot delete network %s: referenced by another root module",
 			resource.ResourceName,
 		)
 	}

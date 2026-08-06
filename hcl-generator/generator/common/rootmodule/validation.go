@@ -1,13 +1,69 @@
 package rootmodule
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 )
+
+// ModuleOutputsReferencedByAnotherModule inspects real root-module
+// traversals. Root output re-exports are intentionally not dependencies.
+func ModuleOutputsReferencedByAnotherModule(
+	modulePath string,
+	moduleName string,
+	outputNames []string,
+) (bool, error) {
+	cleaned := filepath.Clean(modulePath)
+	modulesDirectory := filepath.Dir(cleaned)
+	if filepath.Base(modulesDirectory) != "modules" {
+		return false, nil
+	}
+	rootMain := filepath.Join(filepath.Dir(modulesDirectory), "main.tf")
+	content, err := os.ReadFile(rootMain)
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("impossible d'inspecter %s : %w", rootMain, err)
+	}
+	file, diagnostics := hclwrite.ParseConfig(content, rootMain, hcl.InitialPos)
+	if diagnostics.HasErrors() {
+		return false, fmt.Errorf("HCL invalide dans %s : %s", rootMain, diagnostics.Error())
+	}
+	targets := make(map[string]struct{}, len(outputNames))
+	for _, name := range outputNames {
+		targets["module."+moduleName+"."+name] = struct{}{}
+	}
+	for _, block := range file.Body().Blocks() {
+		if block.Type() != "module" || len(block.Labels()) != 1 || block.Labels()[0] == moduleName {
+			continue
+		}
+		for _, traversal := range rootBodyTraversals(block.Body()) {
+			if _, found := targets[traversal]; found {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
+}
+
+func rootBodyTraversals(body *hclwrite.Body) []string {
+	var result []string
+	for _, attribute := range body.Attributes() {
+		for _, traversal := range attribute.Expr().Variables() {
+			result = append(result, strings.TrimSpace(string(traversal.BuildTokens(nil).Bytes())))
+		}
+	}
+	for _, block := range body.Blocks() {
+		result = append(result, rootBodyTraversals(block.Body())...)
+	}
+	return result
+}
 
 var ModuleNames = []string{"compute", "network", "storage", "iam"}
 

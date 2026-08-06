@@ -15,6 +15,21 @@ func AnalyzeOCIMigration(rootPath string) (commonroot.Plan, error) {
 	if err != nil {
 		return commonroot.Plan{}, err
 	}
+	addOCIChildProviderRequirements(&plan, rootPath)
+	commonroot.AddPreparedFiles(&plan, base)
+	return plan, nil
+}
+
+func PrepareOCIFilteredMigration(rootPath string) (commonroot.Plan, error) {
+	base, err := ociconfig.PrepareOCIRootConfiguration(rootPath)
+	if err != nil {
+		return commonroot.Plan{}, err
+	}
+	plan, err := commonroot.PrepareFilteredMigration(rootPath, "oci", base)
+	if err != nil {
+		return commonroot.Plan{}, err
+	}
+	addOCIChildProviderRequirements(&plan, rootPath)
 	commonroot.AddPreparedFiles(&plan, base)
 	return plan, nil
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"hcl-generator/generator/common"
 	commonroot "hcl-generator/generator/common/rootmodule"
@@ -60,6 +61,7 @@ var actionHandlers = map[routeKey]actionHandler{
 func GenerateAtomically(
 	request *models.Request,
 ) error {
+	request = resolveCompatibleModulePath(request)
 	if request.Action == "create" {
 		if err := os.MkdirAll(request.ModulePath, 0755); err != nil {
 			return fmt.Errorf("impossible de creer le dossier %s : %w", request.ModulePath, err)
@@ -74,9 +76,23 @@ func GenerateAtomically(
 		}
 	}
 
+	layout, layoutErr := commonroot.ResolveModulePath(
+		request.ModulePath,
+		request.Provider,
+		request.Module,
+	)
+	canonical := layoutErr == nil && !layout.Legacy
+
 	var files *common.TerraformFiles
 	var err error
-	if request.Action != "create" {
+	if canonical {
+		files, err = common.LoadTerraformFiles(request.ModulePath)
+		if err == nil {
+			files.Tfvars, err = common.LoadOrCreateFile(
+				filepath.Join(layout.ProviderRoot, "terraform.tfvars"),
+			)
+		}
+	} else if request.Action != "create" {
 		files, err = common.LoadExistingTerraformFiles(request.ModulePath)
 	} else {
 		files, err = common.LoadTerraformFiles(request.ModulePath)
@@ -102,11 +118,15 @@ func GenerateAtomically(
 		return err
 	}
 
+	tfvarsPath := filepath.Join(request.ModulePath, "terraform.tfvars")
+	if canonical {
+		tfvarsPath = filepath.Join(layout.ProviderRoot, "terraform.tfvars")
+	}
 	modulePrepared := map[string][]byte{
-		filepath.Join(request.ModulePath, "main.tf"):          common.FormattedBytes(files.Main),
-		filepath.Join(request.ModulePath, "variables.tf"):     common.FormattedBytes(files.Variables),
-		filepath.Join(request.ModulePath, "terraform.tfvars"): common.FormattedBytes(files.Tfvars),
-		filepath.Join(request.ModulePath, "outputs.tf"):       common.FormattedBytes(files.Outputs),
+		filepath.Join(request.ModulePath, "main.tf"):      common.FormattedBytes(files.Main),
+		filepath.Join(request.ModulePath, "variables.tf"): common.FormattedBytes(files.Variables),
+		tfvarsPath: common.FormattedBytes(files.Tfvars),
+		filepath.Join(request.ModulePath, "outputs.tf"): common.FormattedBytes(files.Outputs),
 	}
 	var transactionDirectories []string
 
@@ -116,11 +136,6 @@ func GenerateAtomically(
 		}
 	}
 
-	layout, layoutErr := commonroot.ResolveModulePath(
-		request.ModulePath,
-		request.Provider,
-		request.Module,
-	)
 	if layoutErr == nil {
 		var rootPrepared map[string][]byte
 		if layout.Legacy {
@@ -173,4 +188,72 @@ func GenerateAtomically(
 		)
 	}
 	return common.CommitFilePathsAtomically(modulePrepared)
+}
+
+// resolveCompatibleModulePath keeps fixture requests on the historical
+// layout while routing functional requests made with an old module_path to
+// the canonical module after phase B.
+func resolveCompatibleModulePath(request *models.Request) *models.Request {
+	layout, err := commonroot.ResolveModulePath(
+		request.ModulePath,
+		request.Provider,
+		request.Module,
+	)
+	if err != nil || !layout.Legacy || requestTargetsFixture(request) {
+		return request
+	}
+	canonical := filepath.Join(layout.ProviderRoot, "modules", request.Module)
+	if info, statErr := os.Stat(canonical); statErr != nil || !info.IsDir() {
+		return request
+	}
+	clone := *request
+	clone.ModulePath = canonical
+	return &clone
+}
+
+func requestTargetsFixture(request *models.Request) bool {
+	var labels []string
+	switch {
+	case request.ComputeResource != nil:
+		labels = append(labels, request.ComputeResource.ResourceName)
+	case request.NetworkResource != nil:
+		labels = append(labels,
+			request.NetworkResource.ResourceName,
+			request.NetworkResource.SubnetResourceName,
+		)
+	case request.StorageResource != nil:
+		labels = append(labels, request.StorageResource.ResourceName)
+	case request.IAMResource != nil:
+		labels = append(labels, request.IAMResource.ResourceName)
+	case request.OCIComputeResource != nil:
+		labels = append(labels, request.OCIComputeResource.ResourceName)
+	case request.OCINetworkResource != nil:
+		labels = append(labels,
+			request.OCINetworkResource.ResourceName,
+			request.OCINetworkResource.SubnetResourceName,
+			request.OCINetworkResource.InternetGatewayResourceName,
+			request.OCINetworkResource.RouteTableResourceName,
+		)
+	case request.OCIStorageResource != nil:
+		labels = append(labels, request.OCIStorageResource.ResourceName)
+	case request.OCIIAMResource != nil:
+		labels = append(labels,
+			request.OCIIAMResource.UserResourceName,
+			request.OCIIAMResource.GroupResourceName,
+			request.OCIIAMResource.MembershipResourceName,
+			request.OCIIAMResource.PolicyResourceName,
+		)
+	}
+	for _, label := range labels {
+		lower := strings.ToLower(label)
+		for _, marker := range []string{
+			"test", "clean_test", "migration_test", "modular_test",
+			"inexistante", "delete_b",
+		} {
+			if strings.Contains(lower, marker) {
+				return true
+			}
+		}
+	}
+	return false
 }

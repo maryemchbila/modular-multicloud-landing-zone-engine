@@ -1,6 +1,7 @@
 package rootmodule
 
 import (
+	"bytes"
 	"fmt"
 	"path/filepath"
 
@@ -38,8 +39,31 @@ func PrepareOCIRootModule(
 	if err != nil {
 		return commonroot.Plan{}, err
 	}
+	addOCIChildProviderRequirements(&plan, rootPath)
 	commonroot.AddPreparedFiles(&plan, base)
 	return plan, nil
+}
+
+func addOCIChildProviderRequirements(plan *commonroot.Plan, rootPath string) {
+	content := []byte(`terraform {
+  required_providers {
+    oci = {
+      source  = "oracle/oci"
+      version = "~> 8.0"
+    }
+  }
+}
+`)
+	for _, moduleName := range commonroot.ModuleNames {
+		mainPath := filepath.Join(rootPath, "modules", moduleName, "main.tf")
+		if len(bytes.TrimSpace(plan.Prepared[mainPath])) == 0 {
+			continue
+		}
+		versionsPath := filepath.Join(rootPath, "modules", moduleName, "versions.tf")
+		if _, present := plan.Prepared[versionsPath]; !present {
+			plan.Prepared[versionsPath] = content
+		}
+	}
 }
 
 func mergeOverlays(base, extra map[string][]byte) map[string][]byte {
