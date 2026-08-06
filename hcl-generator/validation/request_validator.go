@@ -3,10 +3,10 @@ package validation
 import (
 	"fmt"
 	"net"
-	"path/filepath"
 	"regexp"
 	"strings"
 
+	commonroot "hcl-generator/generator/common/rootmodule"
 	"hcl-generator/models"
 )
 
@@ -707,20 +707,8 @@ func validateModulePath(
 	provider string,
 	module string,
 ) error {
-	cleanedPath := filepath.Clean(modulePath)
-	if filepath.Base(cleanedPath) != module ||
-		filepath.Base(filepath.Dir(cleanedPath)) != provider ||
-		filepath.Base(filepath.Dir(filepath.Dir(cleanedPath))) != "generated" {
-		return fmt.Errorf(
-			"module_path %s/%s doit cibler le dossier generated/%s/%s : %s",
-			provider,
-			module,
-			provider,
-			module,
-			modulePath,
-		)
-	}
-	return nil
+	_, err := commonroot.ResolveModulePath(modulePath, provider, module)
+	return err
 }
 
 func validateIAMRequest(request *models.Request) error {

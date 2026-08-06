@@ -118,3 +118,67 @@ func TestUnsupportedRouteDoesNotCreateTerraformFiles(t *testing.T) {
 		t.Fatalf("unsupported route created %d files", len(entries))
 	}
 }
+
+func TestLegacyPathRoutesFunctionalResourcesAndKeepsFixtures(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "generated", "gcp")
+	legacy := filepath.Join(root, "compute")
+	canonical := filepath.Join(root, "modules", "compute")
+	if err := os.MkdirAll(canonical, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	functional := testutil.ComputeRequest(
+		"create", legacy, "vm_backend_01", "vm-backend-01", "e2-small",
+	)
+	if err := generator.GenerateAtomically(functional); err != nil {
+		t.Fatal(err)
+	}
+	canonicalMain, err := os.ReadFile(filepath.Join(canonical, "main.tf"))
+	if err != nil || !strings.Contains(string(canonicalMain), `"vm_backend_01"`) {
+		t.Fatalf("functional resource was not routed to canonical module: %v", err)
+	}
+
+	fixture := testutil.ComputeRequest(
+		"create", legacy, "vm_clean_test_01", "vm-clean-test-01", "e2-small",
+	)
+	if err := generator.GenerateAtomically(fixture); err != nil {
+		t.Fatal(err)
+	}
+	legacyMain, err := os.ReadFile(filepath.Join(legacy, "main.tf"))
+	if err != nil || !strings.Contains(string(legacyMain), `"vm_clean_test_01"`) {
+		t.Fatalf("fixture was not kept in legacy module: %v", err)
+	}
+}
+
+func TestCanonicalModulePathUpdatesRootInSameTransaction(t *testing.T) {
+	root := t.TempDir()
+	modulePath := filepath.Join(
+		root,
+		"generated",
+		"gcp",
+		"modules",
+		"compute",
+	)
+	request := testutil.ComputeRequest(
+		"create",
+		modulePath,
+		"vm_canonical_01",
+		"vm-canonical-01",
+		"e2-medium",
+	)
+	if err := generator.GenerateAtomically(request); err != nil {
+		t.Fatal(err)
+	}
+	rootMain := filepath.Join(root, "generated", "gcp", "main.tf")
+	content, err := os.ReadFile(rootMain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(content), `module "compute"`) ||
+		strings.Contains(string(content), `module "network"`) {
+		t.Fatalf("unexpected root main.tf:\n%s", content)
+	}
+	if _, err := os.Stat(filepath.Join(root, "generated", "gcp", "compute")); !os.IsNotExist(err) {
+		t.Fatal("canonical generation unexpectedly created the legacy module path")
+	}
+}
