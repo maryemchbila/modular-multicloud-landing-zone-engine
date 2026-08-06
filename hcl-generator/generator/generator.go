@@ -6,15 +6,18 @@ import (
 	"path/filepath"
 
 	"hcl-generator/generator/common"
+	commonroot "hcl-generator/generator/common/rootmodule"
 	gcpcompute "hcl-generator/generator/gcp/compute"
 	gcpiam "hcl-generator/generator/gcp/iam"
 	gcpnetwork "hcl-generator/generator/gcp/network"
 	gcproot "hcl-generator/generator/gcp/rootconfig"
+	gcprootmodule "hcl-generator/generator/gcp/rootmodule"
 	gcpstorage "hcl-generator/generator/gcp/storage"
 	ocicompute "hcl-generator/generator/oci/compute"
 	ociiam "hcl-generator/generator/oci/iam"
 	ocinetwork "hcl-generator/generator/oci/network"
 	ocicroot "hcl-generator/generator/oci/rootconfig"
+	ocimodule "hcl-generator/generator/oci/rootmodule"
 	ocistorage "hcl-generator/generator/oci/storage"
 	"hcl-generator/models"
 )
@@ -105,6 +108,7 @@ func GenerateAtomically(
 		filepath.Join(request.ModulePath, "terraform.tfvars"): common.FormattedBytes(files.Tfvars),
 		filepath.Join(request.ModulePath, "outputs.tf"):       common.FormattedBytes(files.Outputs),
 	}
+	var transactionDirectories []string
 
 	for path, content := range modulePrepared {
 		if err := common.ValidatePreparedFile(filepath.Base(path), content); err != nil {
@@ -112,18 +116,47 @@ func GenerateAtomically(
 		}
 	}
 
-	cleanModulePath := filepath.Clean(request.ModulePath)
-	providerPath := filepath.Dir(cleanModulePath)
-	if filepath.Base(cleanModulePath) == request.Module &&
-		filepath.Base(providerPath) == request.Provider {
+	layout, layoutErr := commonroot.ResolveModulePath(
+		request.ModulePath,
+		request.Provider,
+		request.Module,
+	)
+	if layoutErr == nil {
 		var rootPrepared map[string][]byte
-		switch request.Provider {
-		case "gcp":
-			rootPrepared, err = gcproot.PrepareGCPRootConfiguration(providerPath)
-		case "oci":
-			rootPrepared, err = ocicroot.PrepareOCIRootConfiguration(providerPath)
-		default:
-			return fmt.Errorf("provider racine non supporte : %s", request.Provider)
+		if layout.Legacy {
+			switch request.Provider {
+			case "gcp":
+				rootPrepared, err = gcproot.PrepareGCPRootConfiguration(layout.ProviderRoot)
+			case "oci":
+				rootPrepared, err = ocicroot.PrepareOCIRootConfiguration(layout.ProviderRoot)
+			default:
+				return fmt.Errorf("provider racine non supporte : %s", request.Provider)
+			}
+		} else {
+			var rootPlan commonroot.Plan
+			switch request.Provider {
+			case "gcp":
+				rootPlan, err = gcprootmodule.PrepareGCPRootModule(
+					layout.ProviderRoot,
+					modulePrepared,
+				)
+			case "oci":
+				rootPlan, err = ocimodule.PrepareOCIRootModule(
+					layout.ProviderRoot,
+					modulePrepared,
+				)
+			default:
+				return fmt.Errorf("provider racine non supporte : %s", request.Provider)
+			}
+			if err == nil && rootPlan.Report.HasConflicts() {
+				return fmt.Errorf(
+					"conflits dans le root module %s : %v",
+					request.Provider,
+					rootPlan.Report.Conflicts,
+				)
+			}
+			rootPrepared = rootPlan.Prepared
+			transactionDirectories = rootPlan.Directories
 		}
 		if err != nil {
 			return err
@@ -133,5 +166,11 @@ func GenerateAtomically(
 		}
 	}
 
+	if len(transactionDirectories) > 0 {
+		return commonroot.CommitPreparedFiles(
+			modulePrepared,
+			transactionDirectories,
+		)
+	}
 	return common.CommitFilePathsAtomically(modulePrepared)
 }

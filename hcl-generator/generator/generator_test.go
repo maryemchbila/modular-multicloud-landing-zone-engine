@@ -118,3 +118,36 @@ func TestUnsupportedRouteDoesNotCreateTerraformFiles(t *testing.T) {
 		t.Fatalf("unsupported route created %d files", len(entries))
 	}
 }
+
+func TestCanonicalModulePathUpdatesRootInSameTransaction(t *testing.T) {
+	root := t.TempDir()
+	modulePath := filepath.Join(
+		root,
+		"generated",
+		"gcp",
+		"modules",
+		"compute",
+	)
+	request := testutil.ComputeRequest(
+		"create",
+		modulePath,
+		"vm_canonical_01",
+		"vm-canonical-01",
+		"e2-medium",
+	)
+	if err := generator.GenerateAtomically(request); err != nil {
+		t.Fatal(err)
+	}
+	rootMain := filepath.Join(root, "generated", "gcp", "main.tf")
+	content, err := os.ReadFile(rootMain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(content), `module "compute"`) ||
+		strings.Contains(string(content), `module "network"`) {
+		t.Fatalf("unexpected root main.tf:\n%s", content)
+	}
+	if _, err := os.Stat(filepath.Join(root, "generated", "gcp", "compute")); !os.IsNotExist(err) {
+		t.Fatal("canonical generation unexpectedly created the legacy module path")
+	}
+}
