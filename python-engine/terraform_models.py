@@ -44,6 +44,16 @@ class TerraformPipelineStatus(str, Enum):
     SKIPPED = "SKIPPED"
 
 
+class TerraformPlanStatus(str, Enum):
+    """Interpretation fonctionnelle du resultat de terraform plan."""
+
+    NO_CHANGES = "NO_CHANGES"
+    CHANGES_DETECTED = "CHANGES_DETECTED"
+    ERROR = "ERROR"
+    BLOCKED = "BLOCKED"
+    SKIPPED = "SKIPPED"
+
+
 @dataclass(frozen=True)
 class TerraformResult:
     """Resultat complet et serialisable d'une execution Terraform."""
@@ -114,4 +124,38 @@ class TerraformValidationPipelineResult:
         return {
             "status": status.value,
             "result": result.to_dict() if result is not None else None,
+        }
+
+
+@dataclass(frozen=True)
+class TerraformPlanPipelineResult:
+    """Resultat structure de la validation suivie du plan speculatif."""
+
+    cloud: str
+    working_directory: str
+    validation_result: TerraformValidationPipelineResult
+    plan_result: TerraformResult | None
+    plan_status: TerraformPlanStatus
+    final_status: TerraformPlanStatus
+    failed_step: str | None
+    duration_seconds: float
+
+    def to_dict(self) -> dict[str, Any]:
+        """Retourne une representation JSON-compatible du pipeline de plan."""
+
+        return {
+            "cloud": self.cloud,
+            "working_directory": self.working_directory,
+            "validation": self.validation_result.to_dict(),
+            "plan": {
+                "status": self.plan_status.value,
+                "result": (
+                    self.plan_result.to_dict()
+                    if self.plan_result is not None
+                    else None
+                ),
+            },
+            "final_status": self.final_status.value,
+            "failed_step": self.failed_step,
+            "duration_seconds": self.duration_seconds,
         }
