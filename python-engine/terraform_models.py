@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any
 
 
@@ -28,6 +29,19 @@ class UnsafeTerraformCommandError(TerraformArgumentsError):
 
 class TerraformExecutionError(TerraformRunnerError):
     """Terraform n'a pas pu etre lance par le systeme d'exploitation."""
+
+
+class UnknownTerraformCloudError(ValueError):
+    """Le cloud demande ne correspond a aucune racine Terraform autorisee."""
+
+
+class TerraformPipelineStatus(str, Enum):
+    """Statut d'une etape ou du pipeline de validation Terraform."""
+
+    PASS = "PASS"
+    FAIL = "FAIL"
+    BLOCKED = "BLOCKED"
+    SKIPPED = "SKIPPED"
 
 
 @dataclass(frozen=True)
@@ -57,4 +71,47 @@ class TerraformResult:
             "duration_seconds": self.duration_seconds,
             "timed_out": self.timed_out,
             "success": self.success,
+        }
+
+
+@dataclass(frozen=True)
+class TerraformValidationPipelineResult:
+    """Resultat structure des etapes fmt, init et validate."""
+
+    cloud: str
+    working_directory: str
+    fmt_result: TerraformResult | None
+    init_result: TerraformResult | None
+    validate_result: TerraformResult | None
+    fmt_status: TerraformPipelineStatus
+    init_status: TerraformPipelineStatus
+    validate_status: TerraformPipelineStatus
+    final_status: TerraformPipelineStatus
+    failed_step: str | None
+    duration_seconds: float
+
+    def to_dict(self) -> dict[str, Any]:
+        """Retourne une representation JSON-compatible du pipeline."""
+
+        return {
+            "cloud": self.cloud,
+            "working_directory": self.working_directory,
+            "fmt": self._step_to_dict(self.fmt_status, self.fmt_result),
+            "init": self._step_to_dict(self.init_status, self.init_result),
+            "validate": self._step_to_dict(
+                self.validate_status, self.validate_result
+            ),
+            "final_status": self.final_status.value,
+            "failed_step": self.failed_step,
+            "duration_seconds": self.duration_seconds,
+        }
+
+    @staticmethod
+    def _step_to_dict(
+        status: TerraformPipelineStatus,
+        result: TerraformResult | None,
+    ) -> dict[str, Any]:
+        return {
+            "status": status.value,
+            "result": result.to_dict() if result is not None else None,
         }
