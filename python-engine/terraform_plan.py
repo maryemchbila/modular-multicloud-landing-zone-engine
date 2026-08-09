@@ -6,7 +6,9 @@ import logging
 import time
 from pathlib import Path
 
+from terraform_error_classifier import TerraformErrorClassifier
 from terraform_models import (
+    TerraformErrorClassification,
     TerraformPipelineStatus,
     TerraformPlanPipelineResult,
     TerraformPlanStatus,
@@ -30,12 +32,16 @@ class TerraformPlanPipeline:
         runner: TerraformRunner,
         validation_pipeline: TerraformValidationPipeline | None = None,
         plan_timeout: float = 180.0,
+        error_classifier: TerraformErrorClassifier | None = None,
     ) -> None:
         self.runner = runner
+        self.error_classifier = error_classifier or TerraformErrorClassifier()
         self.validation_pipeline = (
             validation_pipeline
             if validation_pipeline is not None
-            else TerraformValidationPipeline(runner)
+            else TerraformValidationPipeline(
+                runner, error_classifier=self.error_classifier
+            )
         )
         self.plan_timeout = self._validate_timeout(plan_timeout)
 
@@ -58,6 +64,7 @@ class TerraformPlanPipeline:
                 final_status=final_status,
                 failed_step=validation_result.failed_step,
                 started_at=started_at,
+                error_classification=validation_result.error_classification,
             )
 
         working_directory = Path(validation_result.working_directory)
@@ -80,6 +87,11 @@ class TerraformPlanPipeline:
             final_status=plan_status,
             failed_step=failed_step,
             started_at=started_at,
+            error_classification=(
+                self.error_classifier.classify("plan", plan_result)
+                if failed_step == "plan"
+                else None
+            ),
         )
 
     @staticmethod
@@ -112,6 +124,7 @@ class TerraformPlanPipeline:
         final_status: TerraformPlanStatus,
         failed_step: str | None,
         started_at: float,
+        error_classification: TerraformErrorClassification | None,
     ) -> TerraformPlanPipelineResult:
         return TerraformPlanPipelineResult(
             cloud=validation_result.cloud,
@@ -122,6 +135,7 @@ class TerraformPlanPipeline:
             final_status=final_status,
             failed_step=failed_step,
             duration_seconds=time.perf_counter() - started_at,
+            error_classification=error_classification,
         )
 
     @staticmethod
