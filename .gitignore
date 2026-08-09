@@ -31,6 +31,7 @@ terraform.tfvars.json
 # Fichiers temporaires
 request.json
 generated_requests/
+/artifacts/terraform/reports/
 *.bak
 *.backup
 *.tmp
