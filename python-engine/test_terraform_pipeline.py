@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, call
 
 from terraform_models import (
+    TerraformErrorCategory,
     TerraformPipelineStatus,
     TerraformResult,
     UnknownTerraformCloudError,
@@ -42,14 +43,16 @@ class TerraformValidationPipelineTests(unittest.TestCase):
         *,
         exit_code: int | None = 0,
         timed_out: bool = False,
+        stdout: str = "stdout",
+        stderr: str | None = None,
     ) -> TerraformResult:
         return TerraformResult(
             command="terraform",
             args=tuple(args),
             working_directory=str(self.gcp_directory),
             exit_code=exit_code,
-            stdout="stdout",
-            stderr="stderr" if exit_code else "",
+            stdout=stdout,
+            stderr=("stderr" if exit_code else "") if stderr is None else stderr,
             duration_seconds=0.25,
             timed_out=timed_out,
             success=exit_code == 0 and not timed_out,
@@ -69,6 +72,7 @@ class TerraformValidationPipelineTests(unittest.TestCase):
 
         self.assertEqual(result.final_status, TerraformPipelineStatus.PASS)
         self.assertIsNone(result.failed_step)
+        self.assertIsNone(result.error_classification)
         self.assertEqual(self.runner.run.call_count, 3)
 
     def test_fmt_failure_skips_init_and_validate(self) -> None:
@@ -247,6 +251,74 @@ class TerraformValidationPipelineTests(unittest.TestCase):
         self.assertEqual(payload["fmt"]["status"], "PASS")
         self.assertEqual(payload["init"]["status"], "PASS")
         self.assertEqual(payload["validate"]["status"], "PASS")
+        self.assertIsNone(payload["error_classification"])
+
+    def test_init_provider_failure_is_classified_on_failed_step(self) -> None:
+        self.runner.run.side_effect = [
+            self._result(TerraformValidationPipeline.FMT_ARGS),
+            self._result(
+                TerraformValidationPipeline.INIT_ARGS,
+                exit_code=1,
+                stderr="Failed to load plugin schemas",
+            ),
+        ]
+
+        result = self.pipeline.run("gcp")
+
+        self.assertEqual(result.failed_step, "init")
+        self.assertEqual(
+            result.error_classification.category,
+            TerraformErrorCategory.PROVIDER_ERROR,
+        )
+        self.assertEqual(result.error_classification.failed_step, "init")
+
+    def test_validate_provider_failure_is_classified(self) -> None:
+        self.runner.run.side_effect = [
+            *self._pass_results()[:2],
+            self._result(
+                TerraformValidationPipeline.VALIDATE_ARGS,
+                exit_code=1,
+                stderr="Plugin did not respond",
+            ),
+        ]
+
+        result = self.pipeline.run("oci")
+
+        self.assertEqual(
+            result.error_classification.category,
+            TerraformErrorCategory.PROVIDER_ERROR,
+        )
+        self.assertEqual(result.error_classification.failed_step, "validate")
+
+    def test_init_network_failure_is_classified_and_serialised(self) -> None:
+        self.runner.run.side_effect = [
+            self._result(TerraformValidationPipeline.FMT_ARGS),
+            self._result(
+                TerraformValidationPipeline.INIT_ARGS,
+                exit_code=1,
+                stderr="connection refused",
+            ),
+        ]
+
+        payload = self.pipeline.run("gcp").to_dict()
+
+        self.assertEqual(payload["error_classification"]["category"], "NETWORK_ERROR")
+        self.assertEqual(payload["error_classification"]["failed_step"], "init")
+
+    def test_timeout_is_integrated_as_timeout_classification(self) -> None:
+        self.runner.run.return_value = self._result(
+            TerraformValidationPipeline.FMT_ARGS,
+            exit_code=None,
+            timed_out=True,
+            stderr="",
+        )
+
+        result = self.pipeline.run("gcp")
+
+        self.assertEqual(
+            result.error_classification.category,
+            TerraformErrorCategory.TIMEOUT,
+        )
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ import logging
 import time
 from pathlib import Path
 
+from terraform_error_classifier import TerraformErrorClassifier
 from terraform_models import (
     TerraformPipelineStatus,
     TerraformResult,
@@ -37,6 +38,7 @@ class TerraformValidationPipeline:
         fmt_timeout: float = 30.0,
         init_timeout: float = 120.0,
         validate_timeout: float = 60.0,
+        error_classifier: TerraformErrorClassifier | None = None,
     ) -> None:
         self.runner = runner
         self.repository_root = (
@@ -49,6 +51,7 @@ class TerraformValidationPipeline:
         self.validate_timeout = self._validate_timeout(
             "validate", validate_timeout
         )
+        self.error_classifier = error_classifier or TerraformErrorClassifier()
 
     def run(self, cloud: str) -> TerraformValidationPipelineResult:
         """Execute les trois etapes dans l'ordre, avec arret au premier echec."""
@@ -168,9 +171,8 @@ class TerraformValidationPipeline:
             return TerraformPipelineStatus.PASS
         return TerraformPipelineStatus.FAIL
 
-    @classmethod
     def _build_result(
-        cls,
+        self,
         cloud: str,
         working_directory: Path,
         started_at: float,
@@ -179,9 +181,9 @@ class TerraformValidationPipeline:
         validate_result: TerraformResult | None = None,
         failed_step: str | None = None,
     ) -> TerraformValidationPipelineResult:
-        fmt_status = cls._status_for_result(fmt_result)
-        init_status = cls._status_for_result(init_result)
-        validate_status = cls._status_for_result(validate_result)
+        fmt_status = self._status_for_result(fmt_result)
+        init_status = self._status_for_result(init_result)
+        validate_status = self._status_for_result(validate_result)
 
         if failed_step is None:
             final_status = TerraformPipelineStatus.PASS
@@ -191,7 +193,19 @@ class TerraformValidationPipeline:
                 "init": init_result,
                 "validate": validate_result,
             }[failed_step]
-            final_status = cls._status_for_result(failed_result)
+            final_status = self._status_for_result(failed_result)
+
+        error_classification = None
+        if failed_step is not None:
+            failed_result = {
+                "fmt": fmt_result,
+                "init": init_result,
+                "validate": validate_result,
+            }[failed_step]
+            if failed_result is not None:
+                error_classification = self.error_classifier.classify(
+                    failed_step, failed_result
+                )
 
         return TerraformValidationPipelineResult(
             cloud=cloud,
@@ -205,6 +219,7 @@ class TerraformValidationPipeline:
             final_status=final_status,
             failed_step=failed_step,
             duration_seconds=time.perf_counter() - started_at,
+            error_classification=error_classification,
         )
 
     @classmethod

@@ -54,6 +54,43 @@ class TerraformPlanStatus(str, Enum):
     SKIPPED = "SKIPPED"
 
 
+class TerraformErrorCategory(str, Enum):
+    """Categories stables d'erreurs Terraform exposees aux consommateurs."""
+
+    AUTHENTICATION_REQUIRED = "AUTHENTICATION_REQUIRED"
+    VARIABLES_MISSING = "VARIABLES_MISSING"
+    PROVIDER_ERROR = "PROVIDER_ERROR"
+    HCL_ERROR = "HCL_ERROR"
+    NETWORK_ERROR = "NETWORK_ERROR"
+    TIMEOUT = "TIMEOUT"
+    STATE_ERROR = "STATE_ERROR"
+    UNKNOWN_ERROR = "UNKNOWN_ERROR"
+
+
+@dataclass(frozen=True)
+class TerraformErrorClassification:
+    """Diagnostic court, serialisable et depourvu de sortie Terraform brute."""
+
+    category: TerraformErrorCategory
+    failed_step: str
+    exit_code: int | None
+    timed_out: bool
+    reason_code: str
+    message: str
+
+    def to_dict(self) -> dict[str, Any]:
+        """Retourne uniquement des champs surs et directement JSON-compatibles."""
+
+        return {
+            "category": self.category.value,
+            "failed_step": self.failed_step,
+            "exit_code": self.exit_code,
+            "timed_out": self.timed_out,
+            "reason_code": self.reason_code,
+            "message": self.message,
+        }
+
+
 @dataclass(frozen=True)
 class TerraformResult:
     """Resultat complet et serialisable d'une execution Terraform."""
@@ -99,6 +136,7 @@ class TerraformValidationPipelineResult:
     final_status: TerraformPipelineStatus
     failed_step: str | None
     duration_seconds: float
+    error_classification: TerraformErrorClassification | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Retourne une representation JSON-compatible du pipeline."""
@@ -113,6 +151,11 @@ class TerraformValidationPipelineResult:
             ),
             "final_status": self.final_status.value,
             "failed_step": self.failed_step,
+            "error_classification": (
+                self.error_classification.to_dict()
+                if self.error_classification is not None
+                else None
+            ),
             "duration_seconds": self.duration_seconds,
         }
 
@@ -139,6 +182,7 @@ class TerraformPlanPipelineResult:
     final_status: TerraformPlanStatus
     failed_step: str | None
     duration_seconds: float
+    error_classification: TerraformErrorClassification | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Retourne une representation JSON-compatible du pipeline de plan."""
@@ -157,5 +201,10 @@ class TerraformPlanPipelineResult:
             },
             "final_status": self.final_status.value,
             "failed_step": self.failed_step,
+            "error_classification": (
+                self.error_classification.to_dict()
+                if self.error_classification is not None
+                else None
+            ),
             "duration_seconds": self.duration_seconds,
         }

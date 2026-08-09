@@ -5,7 +5,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, call
 
+from terraform_error_classifier import TerraformErrorClassifier
 from terraform_models import (
+    TerraformErrorCategory,
+    TerraformErrorClassification,
     TerraformPipelineStatus,
     TerraformPlanStatus,
     TerraformResult,
@@ -67,6 +70,7 @@ class TerraformPlanPipelineTests(unittest.TestCase):
         final_status: TerraformPipelineStatus = TerraformPipelineStatus.PASS,
         failed_step: str | None = None,
         working_directory: Path | None = None,
+        error_classification: TerraformErrorClassification | None = None,
     ) -> TerraformValidationPipelineResult:
         directory = working_directory or self.gcp_directory
         passed = self._terraform_result(["validate"], working_directory=directory)
@@ -87,6 +91,7 @@ class TerraformPlanPipelineTests(unittest.TestCase):
             final_status=final_status,
             failed_step=failed_step,
             duration_seconds=1.0,
+            error_classification=error_classification,
         )
 
     def _run_with_plan_result(self, plan_result: TerraformResult):
@@ -102,6 +107,7 @@ class TerraformPlanPipelineTests(unittest.TestCase):
         self.assertEqual(result.plan_status, TerraformPlanStatus.NO_CHANGES)
         self.assertEqual(result.final_status, TerraformPlanStatus.NO_CHANGES)
         self.assertIsNone(result.failed_step)
+        self.assertIsNone(result.error_classification)
 
     def test_plan_exit_two_means_changes_detected(self) -> None:
         result = self._run_with_plan_result(
@@ -111,6 +117,7 @@ class TerraformPlanPipelineTests(unittest.TestCase):
         self.assertEqual(result.plan_status, TerraformPlanStatus.CHANGES_DETECTED)
         self.assertEqual(result.final_status, TerraformPlanStatus.CHANGES_DETECTED)
         self.assertIsNone(result.failed_step)
+        self.assertIsNone(result.error_classification)
 
     def test_plan_exit_one_means_error(self) -> None:
         result = self._run_with_plan_result(
@@ -122,6 +129,10 @@ class TerraformPlanPipelineTests(unittest.TestCase):
         self.assertEqual(result.plan_status, TerraformPlanStatus.ERROR)
         self.assertEqual(result.final_status, TerraformPlanStatus.ERROR)
         self.assertEqual(result.failed_step, "plan")
+        self.assertEqual(
+            result.error_classification.category,
+            TerraformErrorCategory.UNKNOWN_ERROR,
+        )
 
     def test_fmt_validation_failure_skips_plan(self) -> None:
         self.validation_pipeline.run.return_value = self._validation_result(
@@ -259,6 +270,48 @@ class TerraformPlanPipelineTests(unittest.TestCase):
         )
 
         self.assertEqual(result.plan_result.stderr, "missing required variable")
+
+    def test_plan_missing_variable_is_classified(self) -> None:
+        result = self._run_with_plan_result(
+            self._terraform_result(
+                TerraformPlanPipeline.PLAN_ARGS,
+                exit_code=1,
+                stderr="No value for required variable",
+            )
+        )
+
+        self.assertEqual(result.failed_step, "plan")
+        self.assertEqual(
+            result.error_classification.category,
+            TerraformErrorCategory.VARIABLES_MISSING,
+        )
+        self.assertEqual(
+            result.to_dict()["error_classification"]["reason_code"],
+            "VAR_REQUIRED_MISSING",
+        )
+
+    def test_validation_failure_classification_is_propagated(self) -> None:
+        failed_result = self._terraform_result(
+            TerraformValidationPipeline.INIT_ARGS,
+            exit_code=1,
+            stderr="GetProviderSchema failed",
+        )
+        classification = TerraformErrorClassifier().classify("init", failed_result)
+        self.validation_pipeline.run.return_value = self._validation_result(
+            final_status=TerraformPipelineStatus.FAIL,
+            failed_step="init",
+            error_classification=classification,
+        )
+
+        result = self.pipeline.run("gcp")
+
+        self.assertEqual(result.plan_status, TerraformPlanStatus.SKIPPED)
+        self.assertIs(result.error_classification, classification)
+        self.assertEqual(
+            result.error_classification.category,
+            TerraformErrorCategory.PROVIDER_ERROR,
+        )
+        self.runner.run.assert_not_called()
 
     def test_exit_code_two_is_preserved_and_serialised(self) -> None:
         result = self._run_with_plan_result(
