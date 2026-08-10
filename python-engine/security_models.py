@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
@@ -78,6 +78,34 @@ def _require_non_empty(value: str, field_name: str) -> str:
     return value.strip()
 
 
+def _normalise_optional_text(value: str | None, field_name: str) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise TypeError(f"{field_name} doit etre une chaine ou None")
+    normalised_value = value.strip()
+    return normalised_value or None
+
+
+def _normalise_labels(values: Iterable[str], field_name: str) -> tuple[str, ...]:
+    if isinstance(values, (str, bytes)):
+        raise TypeError(f"{field_name} doit etre une collection de chaines")
+    try:
+        collected_values = tuple(values)
+    except TypeError as exc:
+        raise TypeError(
+            f"{field_name} doit etre une collection de chaines"
+        ) from exc
+    return tuple(
+        sorted(
+            {
+                _require_non_empty(value, field_name).casefold()
+                for value in collected_values
+            }
+        )
+    )
+
+
 @dataclass(frozen=True)
 class SecurityRuleMetadata:
     """Perimetre et informations stables d'une regle de securite."""
@@ -90,6 +118,15 @@ class SecurityRuleMetadata:
     description: str
     severity: SecuritySeverity
     recommendation: str
+    enabled: bool = True
+    tags: tuple[str, ...] = ()
+    profiles: tuple[str, ...] = ()
+    framework: str | None = None
+    framework_version: str | None = None
+    reference_id: str | None = None
+    reference_url: str | None = None
+    control_family: str | None = None
+    rationale: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "rule_id", _require_non_empty(self.rule_id, "rule_id"))
@@ -117,6 +154,43 @@ class SecurityRuleMetadata:
         )
         if not isinstance(self.severity, SecuritySeverity):
             raise TypeError("severity doit etre un SecuritySeverity")
+        if not isinstance(self.enabled, bool):
+            raise TypeError("enabled doit etre un booleen")
+        object.__setattr__(self, "tags", _normalise_labels(self.tags, "tags"))
+        object.__setattr__(
+            self,
+            "profiles",
+            _normalise_labels(self.profiles, "profiles"),
+        )
+        for field_name in (
+            "framework",
+            "framework_version",
+            "reference_id",
+            "reference_url",
+            "control_family",
+            "rationale",
+        ):
+            object.__setattr__(
+                self,
+                field_name,
+                _normalise_optional_text(getattr(self, field_name), field_name),
+            )
+        self._validate_reference_url()
+
+    def _validate_reference_url(self) -> None:
+        if self.reference_url is None:
+            return
+        normalised_url = self.reference_url.casefold().replace(" ", "")
+        sensitive_markers = (
+            "api-key=",
+            "api_key=",
+            "apikey=",
+            "credential=",
+            "password=",
+            "token=",
+        )
+        if any(marker in normalised_url for marker in sensitive_markers):
+            raise ValueError("reference_url ne doit contenir aucun secret")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -128,6 +202,15 @@ class SecurityRuleMetadata:
             "description": self.description,
             "severity": self.severity.value,
             "recommendation": self.recommendation,
+            "enabled": self.enabled,
+            "tags": list(self.tags),
+            "profiles": list(self.profiles),
+            "framework": self.framework,
+            "framework_version": self.framework_version,
+            "reference_id": self.reference_id,
+            "reference_url": self.reference_url,
+            "control_family": self.control_family,
+            "rationale": self.rationale,
         }
 
     def to_json(self, indent: int | None = 2) -> str:
