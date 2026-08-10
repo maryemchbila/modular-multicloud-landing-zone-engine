@@ -33,6 +33,7 @@ request.json
 generated_requests/
 /artifacts/terraform/reports/
 /artifacts/security/reports/
+/artifacts/policy/reports/
 *.bak
 *.backup
 *.tmp
