@@ -93,6 +93,7 @@ class TerraformEndToEndPipeline:
         cloud: str,
         write_report: bool = False,
         report_directory: Path | None = None,
+        plan_output_path: Path | None = None,
     ) -> TerraformEndToEndResult:
         """Execute un passage logique Terraform puis construit un rapport unique."""
 
@@ -102,7 +103,13 @@ class TerraformEndToEndPipeline:
         report: TerraformExecutionReport | None = None
 
         try:
-            plan_result = self.plan_pipeline.run(normalised_cloud)
+            if plan_output_path is None:
+                plan_result = self.plan_pipeline.run(normalised_cloud)
+            else:
+                plan_result = self.plan_pipeline.run(
+                    normalised_cloud,
+                    plan_output_path=plan_output_path,
+                )
             report = self.report_builder.build(plan_result)
             json_path: Path | None = None
             text_path: Path | None = None

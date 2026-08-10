@@ -45,7 +45,11 @@ class TerraformPlanPipeline:
         )
         self.plan_timeout = self._validate_timeout(plan_timeout)
 
-    def run(self, cloud: str) -> TerraformPlanPipelineResult:
+    def run(
+        self,
+        cloud: str,
+        plan_output_path: Path | None = None,
+    ) -> TerraformPlanPipelineResult:
         """Valide la configuration puis lance plan uniquement si elle est valide."""
 
         started_at = time.perf_counter()
@@ -68,8 +72,12 @@ class TerraformPlanPipeline:
             )
 
         working_directory = Path(validation_result.working_directory)
+        plan_args = list(self.PLAN_ARGS)
+        if plan_output_path is not None:
+            resolved_plan_output_path = Path(plan_output_path).expanduser().resolve()
+            plan_args.append(f"-out={resolved_plan_output_path}")
         plan_result = self.runner.run(
-            self.PLAN_ARGS,
+            plan_args,
             cwd=working_directory,
             timeout=self.plan_timeout,
         )
