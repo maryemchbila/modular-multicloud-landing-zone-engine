@@ -32,6 +32,7 @@ terraform.tfvars.json
 request.json
 generated_requests/
 /artifacts/terraform/reports/
+/artifacts/security/reports/
 *.bak
 *.backup
 *.tmp
