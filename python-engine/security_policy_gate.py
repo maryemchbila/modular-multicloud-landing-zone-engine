@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from datetime import datetime, timezone
 
 from security_evaluation import MultiCloudSecurityEvaluationResult
 from security_models import RuleStatus, SecurityFinding, SecuritySeverity
@@ -13,6 +14,8 @@ from security_policy_models import (
     PolicyTriggeredFinding,
     SecurityPolicy,
     SecurityPolicyDisabledError,
+    SecurityPolicyException,
+    SecurityPolicyThresholds,
     build_default_security_policy,
 )
 
@@ -24,7 +27,7 @@ _ISSUE_STATUSES = frozenset({RuleStatus.FAIL, RuleStatus.WARNING})
 
 
 class SecurityPolicyGate:
-    """Evalue une politique sans relancer scanner, regles ou Terraform."""
+    """Evalue profils, seuils et exceptions sans aucun effet de bord."""
 
     def __init__(self, policy: SecurityPolicy) -> None:
         if not isinstance(policy, SecurityPolicy):
@@ -38,6 +41,8 @@ class SecurityPolicyGate:
     def evaluate(
         self,
         evaluation_result: MultiCloudSecurityEvaluationResult,
+        *,
+        evaluated_at: datetime | None = None,
     ) -> PolicyDecision:
         """Retourne une decision deterministe depuis les findings existants."""
 
@@ -50,6 +55,7 @@ class SecurityPolicyGate:
                 "evaluation_result doit etre un MultiCloudSecurityEvaluationResult"
             )
 
+        evaluation_time = self._evaluation_time(evaluated_at)
         findings = tuple(
             finding
             for scan_result in evaluation_result.cloud_results.values()
@@ -59,44 +65,48 @@ class SecurityPolicyGate:
             finding for finding in findings if finding.status in _ISSUE_STATUSES
         )
         severity_summary = self._severity_summary(issue_findings)
-        failures = {
-            severity: tuple(
-                finding
-                for finding in findings
-                if finding.status is RuleStatus.FAIL
-                and finding.severity is severity
-            )
-            for severity in SecuritySeverity
-        }
-
-        critical_failures = failures[SecuritySeverity.CRITICAL]
-        critical_threshold_reached = self._threshold_reached(
-            len(critical_failures), self._policy.critical_fail_threshold
+        thresholds = self._policy.effective_thresholds
+        effective_findings, excepted_findings, exception_ids = (
+            self._apply_exceptions(findings, thresholds, evaluation_time)
         )
-        if critical_threshold_reached and self._policy.block_on_critical:
+
+        critical_failures = self._matching_findings(
+            effective_findings,
+            RuleStatus.FAIL,
+            SecuritySeverity.CRITICAL,
+            thresholds.block_fail_critical,
+        )
+        if critical_failures:
             return self._decision(
                 status=PolicyDecisionStatus.BLOCK,
                 reason_code=PolicyReasonCode.BLOCK_CRITICAL_FINDING,
                 message="Critical failed findings reached the policy threshold.",
                 triggered_findings=critical_failures,
                 severity_summary=severity_summary,
+                applied_exception_ids=exception_ids,
+                excepted_findings=excepted_findings,
+                evaluated_at=evaluation_time,
             )
 
-        high_failures = failures[SecuritySeverity.HIGH]
-        high_threshold_reached = self._threshold_reached(
-            len(high_failures), self._policy.high_fail_threshold
+        high_block_failures = self._matching_findings(
+            effective_findings,
+            RuleStatus.FAIL,
+            SecuritySeverity.HIGH,
+            thresholds.block_fail_high,
         )
-        if high_threshold_reached and not self._policy.approval_on_high:
+        if high_block_failures:
             return self._decision(
                 status=PolicyDecisionStatus.BLOCK,
                 reason_code=PolicyReasonCode.BLOCK_THRESHOLD_EXCEEDED,
                 message="High-severity failed findings reached the blocking threshold.",
-                triggered_findings=high_failures,
+                triggered_findings=high_block_failures,
                 severity_summary=severity_summary,
+                applied_exception_ids=exception_ids,
+                excepted_findings=excepted_findings,
+                evaluated_at=evaluation_time,
             )
 
-        insufficient = self._insufficient_data(evaluation_result, findings)
-        if insufficient:
+        if self._insufficient_data(evaluation_result, findings):
             unavailable_findings = tuple(
                 finding
                 for finding in findings
@@ -111,31 +121,67 @@ class SecurityPolicyGate:
                 ),
                 triggered_findings=unavailable_findings,
                 severity_summary=severity_summary,
+                applied_exception_ids=exception_ids,
+                excepted_findings=excepted_findings,
+                evaluated_at=evaluation_time,
             )
 
-        if critical_threshold_reached:
-            return self._approval_decision(
-                "Critical failed findings require human approval.",
-                critical_failures,
-                severity_summary,
+        if exception_ids:
+            return self._decision(
+                status=PolicyDecisionStatus.REQUIRE_APPROVAL,
+                reason_code=PolicyReasonCode.APPROVAL_EXCEPTION_APPLIED,
+                message="Controlled policy exceptions require human approval.",
+                triggered_findings=(),
+                severity_summary=severity_summary,
+                applied_exception_ids=exception_ids,
+                excepted_findings=excepted_findings,
+                evaluated_at=evaluation_time,
             )
 
-        if high_threshold_reached:
-            return self._approval_decision(
+        approval_conditions = (
+            (
+                RuleStatus.FAIL,
+                SecuritySeverity.HIGH,
+                thresholds.approval_fail_high,
                 "High-severity failed findings require human approval.",
-                high_failures,
-                severity_summary,
-            )
-
-        medium_failures = failures[SecuritySeverity.MEDIUM]
-        if self._threshold_reached(
-            len(medium_failures), self._policy.medium_fail_threshold
-        ):
-            return self._approval_decision(
+            ),
+            (
+                RuleStatus.FAIL,
+                SecuritySeverity.MEDIUM,
+                thresholds.approval_fail_medium,
                 "Medium-severity failed findings reached the approval threshold.",
-                medium_failures,
-                severity_summary,
+            ),
+            (
+                RuleStatus.WARNING,
+                SecuritySeverity.HIGH,
+                thresholds.approval_warning_high,
+                "High-severity warnings require human approval.",
+            ),
+            (
+                RuleStatus.WARNING,
+                SecuritySeverity.MEDIUM,
+                thresholds.approval_warning_medium,
+                "Medium-severity warnings require human approval.",
+            ),
+        )
+        for status, severity, threshold, message in approval_conditions:
+            triggered = self._matching_findings(
+                effective_findings,
+                status,
+                severity,
+                threshold,
             )
+            if triggered:
+                return self._decision(
+                    status=PolicyDecisionStatus.REQUIRE_APPROVAL,
+                    reason_code=PolicyReasonCode.APPROVAL_REQUIRED,
+                    message=message,
+                    triggered_findings=triggered,
+                    severity_summary=severity_summary,
+                    applied_exception_ids=(),
+                    excepted_findings=(),
+                    evaluated_at=evaluation_time,
+                )
 
         return self._decision(
             status=PolicyDecisionStatus.ALLOW,
@@ -143,6 +189,95 @@ class SecurityPolicyGate:
             message="No blocking or approval condition was met by the policy.",
             triggered_findings=issue_findings,
             severity_summary=severity_summary,
+            applied_exception_ids=(),
+            excepted_findings=(),
+            evaluated_at=evaluation_time,
+        )
+
+    def _evaluation_time(
+        self,
+        evaluated_at: datetime | None,
+    ) -> datetime | None:
+        requires_time = any(
+            exception.enabled and exception.expires_at is not None
+            for exception in self._policy.exceptions
+        )
+        if evaluated_at is None:
+            if requires_time:
+                raise ValueError(
+                    "evaluated_at est requis pour evaluer les expirations"
+                )
+            return None
+        if (
+            not isinstance(evaluated_at, datetime)
+            or evaluated_at.tzinfo is None
+            or evaluated_at.utcoffset() is None
+        ):
+            raise ValueError("evaluated_at doit etre un datetime avec fuseau")
+        return evaluated_at.astimezone(timezone.utc)
+
+    def _apply_exceptions(
+        self,
+        findings: tuple[SecurityFinding, ...],
+        thresholds: SecurityPolicyThresholds,
+        evaluated_at: datetime | None,
+    ) -> tuple[
+        tuple[SecurityFinding, ...],
+        tuple[SecurityFinding, ...],
+        tuple[str, ...],
+    ]:
+        active_exceptions = tuple(
+            exception
+            for exception in self._policy.exceptions
+            if exception.is_active_at(evaluated_at)
+        )
+        effective: list[SecurityFinding] = []
+        excepted: list[SecurityFinding] = []
+        exception_ids: set[str] = set()
+        for finding in findings:
+            matching = tuple(
+                exception
+                for exception in active_exceptions
+                if self._is_exception_candidate(finding, thresholds)
+                and exception.matches(finding)
+            )
+            if matching:
+                excepted.append(finding)
+                exception_ids.update(
+                    exception.exception_id for exception in matching
+                )
+            else:
+                effective.append(finding)
+        return tuple(effective), tuple(excepted), tuple(sorted(exception_ids))
+
+    @staticmethod
+    def _is_exception_candidate(
+        finding: SecurityFinding,
+        thresholds: SecurityPolicyThresholds,
+    ) -> bool:
+        if finding.severity is SecuritySeverity.CRITICAL:
+            return False
+        configured_conditions = {
+            (RuleStatus.FAIL, SecuritySeverity.HIGH): (
+                thresholds.block_fail_high,
+                thresholds.approval_fail_high,
+            ),
+            (RuleStatus.FAIL, SecuritySeverity.MEDIUM): (
+                thresholds.approval_fail_medium,
+            ),
+            (RuleStatus.WARNING, SecuritySeverity.HIGH): (
+                thresholds.approval_warning_high,
+            ),
+            (RuleStatus.WARNING, SecuritySeverity.MEDIUM): (
+                thresholds.approval_warning_medium,
+            ),
+        }
+        return any(
+            threshold > 0
+            for threshold in configured_conditions.get(
+                (finding.status, finding.severity),
+                (),
+            )
         )
 
     def _insufficient_data(
@@ -162,22 +297,20 @@ class SecurityPolicyGate:
         )
 
     @staticmethod
-    def _threshold_reached(count: int, threshold: int) -> bool:
-        return threshold > 0 and count >= threshold
-
-    def _approval_decision(
-        self,
-        message: str,
-        triggered_findings: Iterable[SecurityFinding],
-        severity_summary: dict[str, int],
-    ) -> PolicyDecision:
-        return self._decision(
-            status=PolicyDecisionStatus.REQUIRE_APPROVAL,
-            reason_code=PolicyReasonCode.APPROVAL_REQUIRED,
-            message=message,
-            triggered_findings=triggered_findings,
-            severity_summary=severity_summary,
+    def _matching_findings(
+        findings: Iterable[SecurityFinding],
+        status: RuleStatus,
+        severity: SecuritySeverity,
+        threshold: int,
+    ) -> tuple[SecurityFinding, ...]:
+        if threshold == 0:
+            return ()
+        matches = tuple(
+            finding
+            for finding in findings
+            if finding.status is status and finding.severity is severity
         )
+        return matches if len(matches) >= threshold else ()
 
     def _decision(
         self,
@@ -187,18 +320,12 @@ class SecurityPolicyGate:
         message: str,
         triggered_findings: Iterable[SecurityFinding],
         severity_summary: dict[str, int],
+        applied_exception_ids: Iterable[str],
+        excepted_findings: Iterable[SecurityFinding],
+        evaluated_at: datetime | None,
     ) -> PolicyDecision:
-        safe_findings = tuple(
-            sorted(
-                (self._safe_finding(finding) for finding in triggered_findings),
-                key=lambda finding: (
-                    -finding.severity.priority,
-                    finding.rule_id,
-                    finding.resource_address,
-                    finding.cloud,
-                ),
-            )
-        )
+        safe_findings = self._safe_findings(triggered_findings)
+        safe_excepted_findings = self._safe_findings(excepted_findings)
         triggered_rules = tuple(dict.fromkeys(item.rule_id for item in safe_findings))
         return PolicyDecision(
             decision=status,
@@ -213,6 +340,31 @@ class SecurityPolicyGate:
                 status is PolicyDecisionStatus.REQUIRE_APPROVAL
             ),
             deployment_allowed=(status is PolicyDecisionStatus.ALLOW),
+            profile=self._policy.profile,
+            applied_exception_ids=tuple(applied_exception_ids),
+            excepted_findings=safe_excepted_findings,
+            evaluation_time=(
+                evaluated_at.isoformat(timespec="seconds").replace("+00:00", "Z")
+                if evaluated_at is not None
+                else None
+            ),
+        )
+
+    @classmethod
+    def _safe_findings(
+        cls,
+        findings: Iterable[SecurityFinding],
+    ) -> tuple[PolicyTriggeredFinding, ...]:
+        return tuple(
+            sorted(
+                (cls._safe_finding(finding) for finding in findings),
+                key=lambda finding: (
+                    -finding.severity.priority,
+                    finding.rule_id,
+                    finding.resource_address,
+                    finding.cloud,
+                ),
+            )
         )
 
     @staticmethod

@@ -18,6 +18,7 @@ from security_policy_gate import (
     build_default_security_policy_gate,
 )
 from security_policy_models import (
+    InvalidSecurityPolicyError,
     PolicyDecisionStatus,
     PolicyReasonCode,
     SecurityPolicyDisabledError,
@@ -307,17 +308,9 @@ class SecurityPolicyGateTests(unittest.TestCase):
             PolicyReasonCode.BLOCK_THRESHOLD_EXCEEDED,
         )
 
-    def test_critical_can_require_approval_by_policy_configuration(self) -> None:
-        policy = replace(build_default_security_policy(), block_on_critical=False)
-        decision = SecurityPolicyGate(policy).evaluate(
-            self._result(
-                self._finding(
-                    status=RuleStatus.FAIL,
-                    severity=SecuritySeverity.CRITICAL,
-                )
-            )
-        )
-        self.assertIs(decision.decision, PolicyDecisionStatus.REQUIRE_APPROVAL)
+    def test_critical_protection_cannot_be_disabled(self) -> None:
+        with self.assertRaises(InvalidSecurityPolicyError):
+            replace(build_default_security_policy(), block_on_critical=False)
 
     def test_disabled_policy_fails_closed_with_business_error(self) -> None:
         policy = replace(build_default_security_policy(), enabled=False)

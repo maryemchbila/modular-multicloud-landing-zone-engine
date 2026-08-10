@@ -181,6 +181,7 @@ class SecurityPolicyModelsTests(unittest.TestCase):
                 "POLICY_BLOCK_CRITICAL_FINDING",
                 "POLICY_BLOCK_THRESHOLD_EXCEEDED",
                 "POLICY_INSUFFICIENT_SECURITY_DATA",
+                "POLICY_APPROVAL_EXCEPTION_APPLIED",
             ],
         )
 
