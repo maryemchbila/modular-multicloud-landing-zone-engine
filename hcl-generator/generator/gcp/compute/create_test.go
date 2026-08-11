@@ -10,7 +10,7 @@ import (
 )
 
 func TestCreateCompute(t *testing.T) {
-	modulePath := t.TempDir()
+	modulePath := testutil.CanonicalModulePath(t, "gcp", "compute")
 	request := testutil.ComputeRequest(
 		"create",
 		modulePath,

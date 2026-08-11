@@ -16,7 +16,7 @@ import (
 )
 
 func TestStorageDeleteRemovesOnlyTargetBucket(t *testing.T) {
-	modulePath := t.TempDir()
+	modulePath := testutil.CanonicalModulePath(t, "gcp", "storage")
 	createStorageDeleteBucket(t, modulePath, "a", true)
 	createStorageDeleteBucket(t, modulePath, "b", false)
 
@@ -54,7 +54,7 @@ func TestStorageDeleteRemovesOnlyTargetBucket(t *testing.T) {
 }
 
 func TestStorageDeleteMissingBucketLeavesAllFilesUnchanged(t *testing.T) {
-	modulePath := t.TempDir()
+	modulePath := testutil.CanonicalModulePath(t, "gcp", "storage")
 	createStorageDeleteBucket(t, modulePath, "test", true)
 	before := testutil.SnapshotTerraformFiles(t, modulePath)
 
@@ -70,7 +70,7 @@ func TestStorageDeleteMissingBucketLeavesAllFilesUnchanged(t *testing.T) {
 }
 
 func TestStorageDeleteBlocksInternalDependency(t *testing.T) {
-	modulePath := t.TempDir()
+	modulePath := testutil.CanonicalModulePath(t, "gcp", "storage")
 	createStorageDeleteBucket(t, modulePath, "test", true)
 
 	files, err := common.LoadExistingTerraformFiles(modulePath)
@@ -112,7 +112,7 @@ func TestStorageDeleteBlocksInternalDependency(t *testing.T) {
 }
 
 func TestStorageDeleteToleratesMissingExpectedVariable(t *testing.T) {
-	modulePath := t.TempDir()
+	modulePath := testutil.CanonicalModulePath(t, "gcp", "storage")
 	createStorageDeleteBucket(t, modulePath, "test", true)
 
 	files, err := common.LoadExistingTerraformFiles(modulePath)
@@ -146,7 +146,7 @@ func TestStorageDeleteToleratesMissingExpectedVariable(t *testing.T) {
 }
 
 func TestStorageDeleteNonRegressionAndModuleIsolation(t *testing.T) {
-	root := t.TempDir()
+	root := filepath.Join(t.TempDir(), "generated", "gcp", "modules")
 	computePath := filepath.Join(root, "compute")
 	networkPath := filepath.Join(root, "network")
 	storagePath := filepath.Join(root, "storage")
@@ -236,12 +236,12 @@ func TestStorageDeleteNonRegressionAndModuleIsolation(t *testing.T) {
 		"bucket_delete_a_01")); err != nil {
 		t.Fatalf("Storage Delete failed: %v", err)
 	}
-	testutil.AssertTerraformFilesEqual(
+	testutil.AssertModuleFilesEqual(
 		t,
 		computeBefore,
 		testutil.SnapshotTerraformFiles(t, computePath))
 
-	testutil.AssertTerraformFilesEqual(
+	testutil.AssertModuleFilesEqual(
 		t,
 		networkBefore,
 		testutil.SnapshotTerraformFiles(t, networkPath))
@@ -261,7 +261,7 @@ func TestStorageDeleteNonRegressionAndModuleIsolation(t *testing.T) {
 
 func TestStorageDeleteValidationUsesOnlyResourceName(t *testing.T) {
 	request := testutil.StorageDeleteRequest(
-		filepath.Join(t.TempDir(), "generated", "gcp", "storage"),
+		filepath.Join(t.TempDir(), "generated", "gcp", "modules", "storage"),
 		"bucket_delete_test_01")
 
 	if err := validation.ValidateRequest(request); err != nil {

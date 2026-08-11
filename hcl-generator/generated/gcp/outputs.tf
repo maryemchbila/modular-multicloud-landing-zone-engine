@@ -1,3 +1,13 @@
+output "vm_test_26_id" {
+  value = module.compute.vm_test_26_id
+}
+
+
+output "vm_test_26_name" {
+  value = module.compute.vm_test_26_name
+}
+
+
 output "vpc_backend_01_id" {
   value = module.network.vpc_backend_01_id
 }

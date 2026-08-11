@@ -32,7 +32,7 @@ func loadTerraformFiles(
 		return nil, err
 	}
 
-	tfvarsFile, err := loader(filepath.Join(basePath, "terraform.tfvars"))
+	tfvarsFile, err := loader(TerraformTfvarsPath(basePath))
 	if err != nil {
 		return nil, err
 	}
@@ -48,6 +48,15 @@ func loadTerraformFiles(
 		Tfvars:    tfvarsFile,
 		Outputs:   outputsFile,
 	}, nil
+}
+
+func TerraformTfvarsPath(modulePath string) string {
+	cleaned := filepath.Clean(modulePath)
+	modulesRoot := filepath.Dir(cleaned)
+	if filepath.Base(modulesRoot) == "modules" {
+		return filepath.Join(filepath.Dir(modulesRoot), "terraform.tfvars")
+	}
+	return filepath.Join(cleaned, "terraform.tfvars")
 }
 
 func LoadExistingFile(path string) (*hclwrite.File, error) {

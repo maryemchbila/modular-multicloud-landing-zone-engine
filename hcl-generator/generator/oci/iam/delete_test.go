@@ -275,7 +275,7 @@ func TestOCIIAMDeleteBlocksGroupSharedByAnotherPolicy(t *testing.T) {
 			t.Fatalf("seed OCI IAM Create failed: %v", err)
 		}
 	}
-	tfvarsPath := filepath.Join(modulePath, "terraform.tfvars")
+	tfvarsPath := common.TerraformTfvarsPath(modulePath)
 	tfvars, err := common.LoadExistingFile(tfvarsPath)
 	if err != nil {
 		t.Fatalf("load terraform.tfvars fixture: %v", err)
@@ -382,8 +382,8 @@ func TestOCIIAMDeleteToleratesMissingVariableAndOutput(t *testing.T) {
 
 func TestOCIIAMDeleteBlocksCertainCrossModuleDependency(t *testing.T) {
 	root := t.TempDir()
-	iamPath := filepath.Join(root, "generated", "oci", "iam")
-	computePath := filepath.Join(root, "generated", "oci", "compute")
+	iamPath := filepath.Join(root, "generated", "oci", "modules", "iam")
+	computePath := filepath.Join(root, "generated", "oci", "modules", "compute")
 	create := deleteTestCreateRequest(iamPath, "target")
 	if err := generator.GenerateAtomically(create); err != nil {
 		t.Fatalf("seed OCI IAM Create failed: %v", err)
@@ -435,9 +435,9 @@ func TestOCIIAMDeleteBlocksCertainCrossModuleDependency(t *testing.T) {
 
 func TestOCIIAMDeleteKeepsOtherModulesAndGeneratesNoSecrets(t *testing.T) {
 	root := t.TempDir()
-	iamPath := filepath.Join(root, "generated", "oci", "iam")
-	storagePath := filepath.Join(root, "generated", "oci", "storage")
-	gcpPath := filepath.Join(root, "generated", "gcp", "compute")
+	iamPath := filepath.Join(root, "generated", "oci", "modules", "iam")
+	storagePath := filepath.Join(root, "generated", "oci", "modules", "storage")
+	gcpPath := filepath.Join(root, "generated", "gcp", "modules", "compute")
 	target := deleteTestCreateRequest(iamPath, "target")
 	remaining := deleteTestCreateRequest(iamPath, "remaining")
 	for _, request := range []*models.Request{target, remaining} {
@@ -478,7 +478,7 @@ func TestOCIIAMDeleteKeepsOtherModulesAndGeneratesNoSecrets(t *testing.T) {
 		t.Fatalf("OCI IAM Delete failed: %v", err)
 	}
 	for index, path := range paths {
-		testutil.AssertTerraformFilesEqual(
+		testutil.AssertModuleFilesEqual(
 			t,
 			before[index],
 			testutil.SnapshotTerraformFiles(t, path),
@@ -563,6 +563,6 @@ func writeTerraformFixtures(
 		"outputs.tf":       files.Outputs,
 	}
 	for filename, file := range fixtures {
-		writeHCLFixture(t, filepath.Join(modulePath, filename), file)
+		writeHCLFixture(t, testutil.TerraformFilePath(modulePath, filename), file)
 	}
 }

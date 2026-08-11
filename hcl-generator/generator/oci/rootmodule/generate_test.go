@@ -56,3 +56,42 @@ func TestEnsureOCIRootModuleCreatesFourEmptyIsolatedModules(t *testing.T) {
 		t.Fatal("OCI preparation modified GCP")
 	}
 }
+
+func TestEnsureOCIRootModulePreservesExistingChildProviderVersion(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "generated", "oci")
+	modulePath := filepath.Join(root, "modules", "compute")
+	if err := os.MkdirAll(modulePath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(modulePath, "main.tf"),
+		[]byte("resource \"oci_core_instance\" \"example\" {}\n"),
+		0o600,
+	); err != nil {
+		t.Fatal(err)
+	}
+	versionsPath := filepath.Join(modulePath, "versions.tf")
+	versions := []byte(`terraform {
+  required_providers {
+    oci = {
+      source  = "oracle/oci"
+      version = "= 8.23.0"
+    }
+  }
+}
+`)
+	if err := os.WriteFile(versionsPath, versions, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := ociroot.EnsureOCIRootModule(root); err != nil {
+		t.Fatal(err)
+	}
+	after, err := os.ReadFile(versionsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(after, versions) {
+		t.Fatal("existing child provider version was modified")
+	}
+}

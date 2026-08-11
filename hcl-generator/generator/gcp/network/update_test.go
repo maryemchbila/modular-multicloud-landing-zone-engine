@@ -15,7 +15,7 @@ import (
 )
 
 func TestNetworkUpdateScenarios(t *testing.T) {
-	modulePath := t.TempDir()
+	modulePath := testutil.CanonicalModulePath(t, "gcp", "network")
 	create := testutil.NetworkRequest(
 		"create",
 		modulePath,
@@ -163,7 +163,7 @@ func TestNetworkUpdateScenarios(t *testing.T) {
 }
 
 func TestNetworkUpdateMigratesLegacyVariables(t *testing.T) {
-	modulePath := t.TempDir()
+	modulePath := testutil.CanonicalModulePath(t, "gcp", "network")
 	writeLegacyNetworkFixture(t, modulePath)
 	before := testutil.SnapshotTerraformFiles(t, modulePath)
 
@@ -222,7 +222,7 @@ func TestNetworkUpdateMigratesLegacyVariables(t *testing.T) {
 }
 
 func TestNetworkUpdateDoesNotModifyComputeOrStorage(t *testing.T) {
-	root := t.TempDir()
+	root := filepath.Join(t.TempDir(), "generated", "gcp", "modules")
 	computePath := filepath.Join(root, "compute")
 	networkPath := filepath.Join(root, "network")
 	storagePath := filepath.Join(root, "storage")
@@ -286,12 +286,12 @@ func TestNetworkUpdateDoesNotModifyComputeOrStorage(t *testing.T) {
 		t.Fatalf("Network Update failed: %v", err)
 	}
 
-	testutil.AssertTerraformFilesEqual(
+	testutil.AssertModuleFilesEqual(
 		t,
 		computeBefore,
 		testutil.SnapshotTerraformFiles(t, computePath))
 
-	testutil.AssertTerraformFilesEqual(
+	testutil.AssertModuleFilesEqual(
 		t,
 		storageBefore,
 		testutil.SnapshotTerraformFiles(t, storagePath))
@@ -351,7 +351,7 @@ output "subnet_legacy_01_id" {
 	for filename, content := range fixtures {
 		formatted := hclwrite.Format([]byte(strings.TrimSpace(content) + "\n"))
 		if err := os.WriteFile(
-			filepath.Join(modulePath, filename),
+			testutil.TerraformFilePath(modulePath, filename),
 			formatted,
 			0o644,
 		); err != nil {

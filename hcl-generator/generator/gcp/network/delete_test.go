@@ -18,7 +18,7 @@ import (
 )
 
 func TestNetworkDeleteRemovesOnlyTargetPair(t *testing.T) {
-	root := t.TempDir()
+	root := filepath.Join(t.TempDir(), "generated", "gcp", "modules")
 	modulePath := filepath.Join(root, "network")
 	createNetworkDeletePair(t, modulePath, "a", "10.190.0.0/24")
 	createNetworkDeletePair(t, modulePath, "b", "10.191.0.0/24")
@@ -71,7 +71,7 @@ func TestNetworkDeleteRemovesOnlyTargetPair(t *testing.T) {
 }
 
 func TestNetworkDeleteMissingResourcesDoNotModifyFiles(t *testing.T) {
-	root := t.TempDir()
+	root := filepath.Join(t.TempDir(), "generated", "gcp", "modules")
 	modulePath := filepath.Join(root, "network")
 	createNetworkDeletePair(t, modulePath, "test", "10.190.0.0/24")
 	before := testutil.SnapshotTerraformFiles(t, modulePath)
@@ -102,7 +102,7 @@ func TestNetworkDeleteMissingResourcesDoNotModifyFiles(t *testing.T) {
 }
 
 func TestNetworkDeleteRejectsMismatchedPair(t *testing.T) {
-	root := t.TempDir()
+	root := filepath.Join(t.TempDir(), "generated", "gcp", "modules")
 	modulePath := filepath.Join(root, "network")
 	createNetworkDeletePair(t, modulePath, "a", "10.190.0.0/24")
 	createNetworkDeletePair(t, modulePath, "b", "10.191.0.0/24")
@@ -122,7 +122,7 @@ func TestNetworkDeleteRejectsMismatchedPair(t *testing.T) {
 }
 
 func TestNetworkDeleteBlocksInternalDependency(t *testing.T) {
-	root := t.TempDir()
+	root := filepath.Join(t.TempDir(), "generated", "gcp", "modules")
 	modulePath := filepath.Join(root, "network")
 	createNetworkDeletePair(t, modulePath, "a", "10.190.0.0/24")
 	createNetworkDeletePair(t, modulePath, "b", "10.191.0.0/24")
@@ -171,7 +171,7 @@ func TestNetworkDeleteBlocksInternalDependency(t *testing.T) {
 }
 
 func TestNetworkDeleteBlocksCertainComputeDependency(t *testing.T) {
-	root := t.TempDir()
+	root := filepath.Join(t.TempDir(), "generated", "gcp", "modules")
 	networkPath := filepath.Join(root, "network")
 	computePath := filepath.Join(root, "compute")
 	createNetworkDeletePair(t, networkPath, "test", "10.190.0.0/24")
@@ -207,7 +207,7 @@ func TestNetworkDeleteBlocksCertainComputeDependency(t *testing.T) {
 }
 
 func TestNetworkDeleteNonRegressionAndModuleIsolation(t *testing.T) {
-	root := t.TempDir()
+	root := filepath.Join(t.TempDir(), "generated", "gcp", "modules")
 	computePath := filepath.Join(root, "compute")
 	networkPath := filepath.Join(root, "network")
 	storagePath := filepath.Join(root, "storage")
@@ -279,12 +279,12 @@ func TestNetworkDeleteNonRegressionAndModuleIsolation(t *testing.T) {
 		"subnet_delete_a_01")); err != nil {
 		t.Fatalf("Network Delete failed: %v", err)
 	}
-	testutil.AssertTerraformFilesEqual(
+	testutil.AssertModuleFilesEqual(
 		t,
 		computeBefore,
 		testutil.SnapshotTerraformFiles(t, computePath))
 
-	testutil.AssertTerraformFilesEqual(
+	testutil.AssertModuleFilesEqual(
 		t,
 		storageBefore,
 		testutil.SnapshotTerraformFiles(t, storagePath))
@@ -305,7 +305,7 @@ func TestNetworkDeleteNonRegressionAndModuleIsolation(t *testing.T) {
 
 func TestNetworkDeleteValidationUsesOnlyIdentifiers(t *testing.T) {
 	request := testutil.NetworkDeleteRequest(
-		filepath.Join(t.TempDir(), "generated", "gcp", "network"),
+		filepath.Join(t.TempDir(), "generated", "gcp", "modules", "network"),
 		"vpc_delete_test_01",
 		"subnet_delete_test_01")
 

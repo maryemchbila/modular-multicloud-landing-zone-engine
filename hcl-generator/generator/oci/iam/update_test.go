@@ -312,9 +312,9 @@ func TestOCIIAMUpdateRejectsDuplicateActualName(t *testing.T) {
 
 func TestOCIIAMUpdateDoesNotModifyOtherModulesOrAddSecrets(t *testing.T) {
 	root := t.TempDir()
-	iamPath := filepath.Join(root, "generated", "oci", "iam")
-	computePath := filepath.Join(root, "generated", "oci", "compute")
-	gcpPath := filepath.Join(root, "generated", "gcp", "compute")
+	iamPath := filepath.Join(root, "generated", "oci", "modules", "iam")
+	computePath := filepath.Join(root, "generated", "oci", "modules", "compute")
+	gcpPath := filepath.Join(root, "generated", "gcp", "modules", "compute")
 	otherRequests := []*models.Request{
 		testutil.OCIComputeRequest(
 			computePath,
@@ -349,7 +349,7 @@ func TestOCIIAMUpdateDoesNotModifyOtherModulesOrAddSecrets(t *testing.T) {
 	}
 
 	for index, path := range paths {
-		testutil.AssertTerraformFilesEqual(
+		testutil.AssertModuleFilesEqual(
 			t,
 			before[index],
 			testutil.SnapshotTerraformFiles(t, path),

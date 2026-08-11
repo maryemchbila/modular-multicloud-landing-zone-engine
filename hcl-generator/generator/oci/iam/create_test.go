@@ -236,11 +236,11 @@ func TestOCIIAMCreateDuplicateIsAtomic(t *testing.T) {
 
 func TestOCIIAMCreateDoesNotModifyOtherModules(t *testing.T) {
 	root := t.TempDir()
-	ociIAMPath := filepath.Join(root, "generated", "oci", "iam")
-	ociComputePath := filepath.Join(root, "generated", "oci", "compute")
-	ociNetworkPath := filepath.Join(root, "generated", "oci", "network")
-	ociStoragePath := filepath.Join(root, "generated", "oci", "storage")
-	gcpComputePath := filepath.Join(root, "generated", "gcp", "compute")
+	ociIAMPath := filepath.Join(root, "generated", "oci", "modules", "iam")
+	ociComputePath := filepath.Join(root, "generated", "oci", "modules", "compute")
+	ociNetworkPath := filepath.Join(root, "generated", "oci", "modules", "network")
+	ociStoragePath := filepath.Join(root, "generated", "oci", "modules", "storage")
+	gcpComputePath := filepath.Join(root, "generated", "gcp", "modules", "compute")
 
 	otherRequests := []*models.Request{
 		testutil.OCIComputeRequest(
@@ -299,7 +299,7 @@ func TestOCIIAMCreateDoesNotModifyOtherModules(t *testing.T) {
 		t.Fatalf("OCI IAM Create failed: %v", err)
 	}
 	for index, path := range paths {
-		testutil.AssertTerraformFilesEqual(
+		testutil.AssertModuleFilesEqual(
 			t,
 			before[index],
 			testutil.SnapshotTerraformFiles(t, path),
@@ -340,5 +340,5 @@ func expectedVariableNames() []string {
 
 func iamModulePath(t *testing.T) string {
 	t.Helper()
-	return filepath.Join(t.TempDir(), "generated", "oci", "iam")
+	return filepath.Join(t.TempDir(), "generated", "oci", "modules", "iam")
 }

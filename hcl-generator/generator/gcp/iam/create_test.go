@@ -17,7 +17,7 @@ import (
 
 func TestIAMCreateAddsMultipleAccountsAndRejectsDuplicate(t *testing.T) {
 	root := t.TempDir()
-	modulePath := filepath.Join(root, "generated", "gcp", "iam")
+	modulePath := filepath.Join(root, "generated", "gcp", "modules", "iam")
 	writeSiblingSentinels(t, filepath.Dir(modulePath))
 
 	first := iamRequest(
@@ -68,7 +68,7 @@ func TestIAMCreateAddsMultipleAccountsAndRejectsDuplicate(t *testing.T) {
 }
 
 func TestIAMCreateAllowsTargetedStorageViewerRole(t *testing.T) {
-	modulePath := filepath.Join(t.TempDir(), "generated", "gcp", "iam")
+	modulePath := filepath.Join(t.TempDir(), "generated", "gcp", "modules", "iam")
 	request := iamRequest(
 		modulePath,
 		"sa_storage_viewer_01",
@@ -115,7 +115,7 @@ func iamRequest(
 func assertValidIAMFiles(t *testing.T, modulePath string) {
 	t.Helper()
 	for _, filename := range testutil.TerraformFilenames {
-		content, err := os.ReadFile(filepath.Join(modulePath, filename))
+		content, err := os.ReadFile(testutil.TerraformFilePath(modulePath, filename))
 		if err != nil {
 			t.Fatalf("read %s: %v", filename, err)
 		}

@@ -10,7 +10,7 @@ import (
 )
 
 func TestCreateStorage(t *testing.T) {
-	modulePath := t.TempDir()
+	modulePath := testutil.CanonicalModulePath(t, "gcp", "storage")
 	request := testutil.StorageRequest(
 		"create",
 		modulePath,

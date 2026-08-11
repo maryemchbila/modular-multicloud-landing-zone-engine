@@ -86,10 +86,11 @@ func TestValidateOCIStorageRejectsWrongPath(
 		t.TempDir(),
 		"generated",
 		"oci",
+		"modules",
 		"compute",
 	)
 	err := ValidateRequest(request)
-	if err == nil || !strings.Contains(err.Error(), "generated/oci/storage") {
+	if err == nil || !strings.Contains(err.Error(), "generated/oci/modules/storage") {
 		t.Fatalf("unexpected path validation error: %v", err)
 	}
 
@@ -124,6 +125,7 @@ func validOCIStorageRequest(t *testing.T) *models.Request {
 			t.TempDir(),
 			"generated",
 			"oci",
+			"modules",
 			"storage",
 		),
 		OCIStorageResource: &models.OCIStorageRequest{

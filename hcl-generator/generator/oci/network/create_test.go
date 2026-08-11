@@ -17,6 +17,7 @@ func TestOCINetworkCreateGeneratesLinkedResources(t *testing.T) {
 		t.TempDir(),
 		"generated",
 		"oci",
+		"modules",
 		"network",
 	)
 	request := publicNetworkRequest(modulePath)
@@ -96,6 +97,7 @@ func TestOCINetworkCreateAddsSecondNetworkAndPreservesFirst(
 		t.TempDir(),
 		"generated",
 		"oci",
+		"modules",
 		"network",
 	)
 	requests := []*models.Request{
@@ -148,6 +150,7 @@ func TestOCINetworkDuplicateLeavesAllFilesUnchanged(t *testing.T) {
 		t.TempDir(),
 		"generated",
 		"oci",
+		"modules",
 		"network",
 	)
 	request := publicNetworkRequest(modulePath)
@@ -170,10 +173,10 @@ func TestOCINetworkDuplicateLeavesAllFilesUnchanged(t *testing.T) {
 
 func TestOCINetworkCreateDoesNotModifyOtherProviderModules(t *testing.T) {
 	root := t.TempDir()
-	gcpComputePath := filepath.Join(root, "generated", "gcp", "compute")
-	gcpNetworkPath := filepath.Join(root, "generated", "gcp", "network")
-	ociComputePath := filepath.Join(root, "generated", "oci", "compute")
-	ociNetworkPath := filepath.Join(root, "generated", "oci", "network")
+	gcpComputePath := filepath.Join(root, "generated", "gcp", "modules", "compute")
+	gcpNetworkPath := filepath.Join(root, "generated", "gcp", "modules", "network")
+	ociComputePath := filepath.Join(root, "generated", "oci", "modules", "compute")
+	ociNetworkPath := filepath.Join(root, "generated", "oci", "modules", "network")
 
 	seedRequests := []*models.Request{
 		testutil.ComputeRequest(
@@ -226,7 +229,7 @@ func TestOCINetworkCreateDoesNotModifyOtherProviderModules(t *testing.T) {
 		gcpNetworkBefore,
 		testutil.SnapshotTerraformFiles(t, gcpNetworkPath),
 	)
-	testutil.AssertTerraformFilesEqual(
+	testutil.AssertModuleFilesEqual(
 		t,
 		ociComputeBefore,
 		testutil.SnapshotTerraformFiles(t, ociComputePath),

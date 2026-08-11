@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"hcl-generator/generator/common"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -16,14 +17,12 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-type MigrationReport struct {
+type PreparationReport struct {
 	Provider          string
 	RootPath          string
 	FilesToCreate     []string
 	FilesToModify     []string
-	FilesToMove       []string
 	ModuleBlocksToAdd []string
-	ResourcesToMove   []string
 	VariablesToMerge  []string
 	OutputsToAdd      []string
 	Dependencies      []string
@@ -34,7 +33,7 @@ type MigrationReport struct {
 type Plan struct {
 	Prepared    map[string][]byte
 	Directories []string
-	Report      MigrationReport
+	Report      PreparationReport
 }
 
 type moduleInfo struct {
@@ -95,7 +94,7 @@ func PrepareRootModule(
 	overlays map[string][]byte,
 ) (Plan, error) {
 	rootPath = filepath.Clean(rootPath)
-	report := MigrationReport{Provider: provider, RootPath: rootPath}
+	report := PreparationReport{Provider: provider, RootPath: rootPath}
 	prepared := make(map[string][]byte)
 	directories := []string{rootPath, filepath.Join(rootPath, "modules")}
 
@@ -120,6 +119,18 @@ func PrepareRootModule(
 		rootVariables,
 		rootOutputs,
 	)
+	rootMain, err = common.CompactFile(rootMain, "main.tf")
+	if err != nil {
+		return Plan{}, err
+	}
+	rootVariables, err = common.CompactFile(rootVariables, "variables.tf")
+	if err != nil {
+		return Plan{}, err
+	}
+	rootOutputs, err = common.CompactFile(rootOutputs, "outputs.tf")
+	if err != nil {
+		return Plan{}, err
+	}
 
 	infos := make(map[string]*moduleInfo)
 	for _, moduleName := range ModuleNames {
@@ -293,83 +304,8 @@ func reconcileManagedRoot(
 	return managedVariables
 }
 
-// AnalyzeMigration projette la phase B en memoire. Les fichiers historiques
-// restent intacts et aucune valeur tfvars n'est incluse dans le rapport.
-func AnalyzeMigration(
-	rootPath string,
-	provider string,
-	baseOverlays map[string][]byte,
-) (Plan, error) {
-	overlays := cloneContents(baseOverlays)
-	report := MigrationReport{Provider: provider, RootPath: filepath.Clean(rootPath)}
-	for _, moduleName := range ModuleNames {
-		legacyPath := filepath.Join(rootPath, moduleName)
-		targetPath := filepath.Join(rootPath, "modules", moduleName)
-		for _, filename := range []string{
-			"main.tf", "variables.tf", "terraform.tfvars", "outputs.tf",
-		} {
-			sourcePath := filepath.Join(legacyPath, filename)
-			content, err := os.ReadFile(sourcePath)
-			if errors.Is(err, os.ErrNotExist) {
-				continue
-			}
-			if err != nil {
-				return Plan{}, fmt.Errorf("impossible de lire %s : %w", sourcePath, err)
-			}
-			target := filepath.Join(targetPath, filename)
-			if existing, readErr := os.ReadFile(target); readErr == nil &&
-				len(bytes.TrimSpace(existing)) > 0 &&
-				!bytes.Equal(hclwrite.Format(existing), hclwrite.Format(content)) {
-				report.Conflicts = append(report.Conflicts,
-					fmt.Sprintf("%s et %s contiennent des configurations differentes", sourcePath, target))
-				continue
-			} else if readErr != nil && !errors.Is(readErr, os.ErrNotExist) {
-				return Plan{}, readErr
-			}
-			overlays[target] = content
-			report.FilesToMove = append(report.FilesToMove, sourcePath+" -> "+target)
-		}
-		collectLegacyInventory(legacyPath, moduleName, &report)
-	}
-
-	plan, err := PrepareRootModule(rootPath, provider, overlays)
-	if err != nil {
-		return Plan{}, err
-	}
-	plan.Report.FilesToMove = append(plan.Report.FilesToMove, report.FilesToMove...)
-	plan.Report.ResourcesToMove = append(plan.Report.ResourcesToMove, report.ResourcesToMove...)
-	plan.Report.Conflicts = append(plan.Report.Conflicts, report.Conflicts...)
-	plan.Report.normalize()
-	return plan, nil
-}
-
-func (report MigrationReport) HasConflicts() bool {
+func (report PreparationReport) HasConflicts() bool {
 	return len(report.Conflicts) > 0
-}
-
-func (report MigrationReport) WriteTo(writer io.Writer) {
-	fmt.Fprintf(writer, "Provider: %s\nRacine: %s\n", report.Provider, report.RootPath)
-	writeReportSection(writer, "Fichiers a creer", report.FilesToCreate)
-	writeReportSection(writer, "Fichiers a modifier", report.FilesToModify)
-	writeReportSection(writer, "Fichiers a deplacer en phase B", report.FilesToMove)
-	writeReportSection(writer, "Blocs module a ajouter", report.ModuleBlocksToAdd)
-	writeReportSection(writer, "Ressources a deplacer", report.ResourcesToMove)
-	writeReportSection(writer, "Variables a fusionner", report.VariablesToMerge)
-	writeReportSection(writer, "Outputs a ajouter", report.OutputsToAdd)
-	writeReportSection(writer, "Dependances detectees", report.Dependencies)
-	writeReportSection(writer, "Valeurs ignorees", report.IgnoredValues)
-	writeReportSection(writer, "Conflits", report.Conflicts)
-}
-
-func writeReportSection(writer io.Writer, title string, values []string) {
-	fmt.Fprintf(writer, "%s (%d):\n", title, len(values))
-	if len(values) == 0 {
-		fmt.Fprintln(writer, "  - aucun")
-		return
-	}
-	for _, value := range values {
-		fmt.Fprintln(writer, "  - "+value)
-	}
 }
 
 func loadModuleInfo(
@@ -489,7 +425,7 @@ func mergeTfvars(
 	root *hclwrite.File,
 	info *moduleInfo,
 	dependencies map[string]hcl.Traversal,
-	report *MigrationReport,
+	report *PreparationReport,
 ) {
 	declared := make(map[string]struct{})
 	for _, block := range labeledBlocks(info.variables.Body(), "variable") {
@@ -556,7 +492,7 @@ func ensureRootOutput(root *hclwrite.File, moduleName, outputName string) error 
 func detectNetworkDependencies(
 	provider string,
 	infos map[string]*moduleInfo,
-	report *MigrationReport,
+	report *PreparationReport,
 ) map[string]map[string]hcl.Traversal {
 	result := make(map[string]map[string]hcl.Traversal)
 	for _, name := range ModuleNames {
@@ -689,19 +625,7 @@ func bodyTraversals(body *hclwrite.Body) []string {
 	return result
 }
 
-func collectLegacyInventory(path, moduleName string, report *MigrationReport) {
-	mainFile, err := loadFile(filepath.Join(path, "main.tf"), nil)
-	if err == nil {
-		for _, block := range mainFile.Body().Blocks() {
-			if block.Type() == "resource" && len(block.Labels()) == 2 {
-				report.ResourcesToMove = append(report.ResourcesToMove,
-					moduleName+":"+block.Labels()[0]+"."+block.Labels()[1])
-			}
-		}
-	}
-}
-
-func classifyFiles(prepared map[string][]byte, report *MigrationReport) {
+func classifyFiles(prepared map[string][]byte, report *PreparationReport) {
 	for path, content := range prepared {
 		existing, err := os.ReadFile(path)
 		if errors.Is(err, os.ErrNotExist) {
@@ -724,14 +648,6 @@ func newlineIfNotEmpty(content []byte) []byte {
 		return nil
 	}
 	return []byte{'\n'}
-}
-
-func cloneContents(source map[string][]byte) map[string][]byte {
-	result := make(map[string][]byte, len(source))
-	for path, content := range source {
-		result[filepath.Clean(path)] = append([]byte(nil), content...)
-	}
-	return result
 }
 
 func validModuleName(name string) bool {
@@ -757,12 +673,10 @@ func uniqueStrings(values []string) []string {
 	return result
 }
 
-func (report *MigrationReport) normalize() {
+func (report *PreparationReport) normalize() {
 	report.FilesToCreate = uniqueStrings(report.FilesToCreate)
 	report.FilesToModify = uniqueStrings(report.FilesToModify)
-	report.FilesToMove = uniqueStrings(report.FilesToMove)
 	report.ModuleBlocksToAdd = uniqueStrings(report.ModuleBlocksToAdd)
-	report.ResourcesToMove = uniqueStrings(report.ResourcesToMove)
 	report.VariablesToMerge = uniqueStrings(report.VariablesToMerge)
 	report.OutputsToAdd = uniqueStrings(report.OutputsToAdd)
 	report.Dependencies = uniqueStrings(report.Dependencies)

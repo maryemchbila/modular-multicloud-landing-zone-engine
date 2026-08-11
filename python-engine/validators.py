@@ -46,15 +46,15 @@ _GENERATED_ROOT = (
     Path(__file__).resolve().parent.parent / "hcl-generator" / "generated"
 )
 _GCP_OUTPUTS = {
-    "compute": _GENERATED_ROOT / "gcp" / "compute",
-    "network": _GENERATED_ROOT / "gcp" / "network",
-    "storage": _GENERATED_ROOT / "gcp" / "storage",
-    "iam": _GENERATED_ROOT / "gcp" / "iam",
+    "compute": _GENERATED_ROOT / "gcp" / "modules" / "compute",
+    "network": _GENERATED_ROOT / "gcp" / "modules" / "network",
+    "storage": _GENERATED_ROOT / "gcp" / "modules" / "storage",
+    "iam": _GENERATED_ROOT / "gcp" / "modules" / "iam",
 }
-_OCI_COMPUTE_OUTPUT = _GENERATED_ROOT / "oci" / "compute"
-_OCI_NETWORK_OUTPUT = _GENERATED_ROOT / "oci" / "network"
-_OCI_STORAGE_OUTPUT = _GENERATED_ROOT / "oci" / "storage"
-_OCI_IAM_OUTPUT = _GENERATED_ROOT / "oci" / "iam"
+_OCI_COMPUTE_OUTPUT = _GENERATED_ROOT / "oci" / "modules" / "compute"
+_OCI_NETWORK_OUTPUT = _GENERATED_ROOT / "oci" / "modules" / "network"
+_OCI_STORAGE_OUTPUT = _GENERATED_ROOT / "oci" / "modules" / "storage"
+_OCI_IAM_OUTPUT = _GENERATED_ROOT / "oci" / "modules" / "iam"
 _OCI_STORAGE_ACCESS_TYPES = {
     "NoPublicAccess",
     "ObjectRead",
@@ -665,7 +665,8 @@ def validate_request(
     ):
         errors.append(
             f"module_path {expected_provider}/{request.module} doit cibler "
-            f"hcl-generator/generated/{expected_provider}/{request.module}"
+            "hcl-generator/generated/"
+            f"{expected_provider}/modules/{request.module}"
         )
 
     resource_name = getattr(request.resource, "resource_name", "")

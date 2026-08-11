@@ -13,10 +13,10 @@ import (
 
 func TestProviderModuleActionRoutingAndIsolation(t *testing.T) {
 	root := t.TempDir()
-	gcpComputePath := filepath.Join(root, "generated", "gcp", "compute")
-	gcpNetworkPath := filepath.Join(root, "generated", "gcp", "network")
-	gcpStoragePath := filepath.Join(root, "generated", "gcp", "storage")
-	ociComputePath := filepath.Join(root, "generated", "oci", "compute")
+	gcpComputePath := filepath.Join(root, "generated", "gcp", "modules", "compute")
+	gcpNetworkPath := filepath.Join(root, "generated", "gcp", "modules", "network")
+	gcpStoragePath := filepath.Join(root, "generated", "gcp", "modules", "storage")
+	ociComputePath := filepath.Join(root, "generated", "oci", "modules", "compute")
 
 	requests := []*models.Request{
 		testutil.ComputeRequest(
@@ -76,12 +76,12 @@ func TestProviderModuleActionRoutingAndIsolation(t *testing.T) {
 	)); err != nil {
 		t.Fatalf("GCP Compute Update failed: %v", err)
 	}
-	testutil.AssertTerraformFilesEqual(
+	testutil.AssertModuleFilesEqual(
 		t,
 		networkBefore,
 		testutil.SnapshotTerraformFiles(t, gcpNetworkPath),
 	)
-	testutil.AssertTerraformFilesEqual(
+	testutil.AssertModuleFilesEqual(
 		t,
 		storageBefore,
 		testutil.SnapshotTerraformFiles(t, gcpStoragePath),
@@ -119,34 +119,17 @@ func TestUnsupportedRouteDoesNotCreateTerraformFiles(t *testing.T) {
 	}
 }
 
-func TestLegacyPathRoutesFunctionalResourcesAndKeepsFixtures(t *testing.T) {
+func TestLegacyPathIsRejectedWithoutWriting(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "generated", "gcp")
 	legacy := filepath.Join(root, "compute")
-	canonical := filepath.Join(root, "modules", "compute")
-	if err := os.MkdirAll(canonical, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	functional := testutil.ComputeRequest(
-		"create", legacy, "vm_backend_01", "vm-backend-01", "e2-small",
+	request := testutil.ComputeRequest(
+		"create", legacy, "vm_test_26", "vm-test-26", "e2-small",
 	)
-	if err := generator.GenerateAtomically(functional); err != nil {
-		t.Fatal(err)
+	if err := generator.GenerateAtomically(request); err == nil {
+		t.Fatal("legacy path was accepted")
 	}
-	canonicalMain, err := os.ReadFile(filepath.Join(canonical, "main.tf"))
-	if err != nil || !strings.Contains(string(canonicalMain), `"vm_backend_01"`) {
-		t.Fatalf("functional resource was not routed to canonical module: %v", err)
-	}
-
-	fixture := testutil.ComputeRequest(
-		"create", legacy, "vm_clean_test_01", "vm-clean-test-01", "e2-small",
-	)
-	if err := generator.GenerateAtomically(fixture); err != nil {
-		t.Fatal(err)
-	}
-	legacyMain, err := os.ReadFile(filepath.Join(legacy, "main.tf"))
-	if err != nil || !strings.Contains(string(legacyMain), `"vm_clean_test_01"`) {
-		t.Fatalf("fixture was not kept in legacy module: %v", err)
+	if _, err := os.Stat(legacy); !os.IsNotExist(err) {
+		t.Fatalf("legacy path was created: %v", err)
 	}
 }
 
@@ -180,5 +163,172 @@ func TestCanonicalModulePathUpdatesRootInSameTransaction(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(root, "generated", "gcp", "compute")); !os.IsNotExist(err) {
 		t.Fatal("canonical generation unexpectedly created the legacy module path")
+	}
+}
+
+func TestResourceNamesNeverChangeCanonicalDestination(t *testing.T) {
+	markers := []string{"test", "inexistante", "delete_b", "demo", "fixture"}
+	root := t.TempDir()
+	computePath := filepath.Join(root, "generated", "gcp", "modules", "compute")
+	for _, marker := range markers {
+		resourceName := "vm_" + marker + "_01"
+		if marker == "test" {
+			resourceName = "vm_test_26"
+		}
+		request := testutil.ComputeRequest(
+			"create",
+			computePath,
+			resourceName,
+			strings.ReplaceAll(resourceName, "_", "-"),
+			"e2-medium",
+		)
+		if err := generator.GenerateAtomically(request); err != nil {
+			t.Fatalf("generate %s: %v", resourceName, err)
+		}
+	}
+
+	mainContent, err := os.ReadFile(filepath.Join(computePath, "main.tf"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, marker := range markers {
+		resourceName := "vm_" + marker + "_01"
+		if marker == "test" {
+			resourceName = "vm_test_26"
+		}
+		if count := strings.Count(
+			string(mainContent),
+			`resource "google_compute_instance" "`+resourceName+`"`,
+		); count != 1 {
+			t.Fatalf("%s canonical resource count = %d", resourceName, count)
+		}
+	}
+	assertCanonicalRootAndNoLegacy(t, root, "gcp", "compute")
+}
+
+func TestEveryProviderModuleUsesCanonicalDestinationForTestName(t *testing.T) {
+	tests := []struct {
+		name         string
+		provider     string
+		module       string
+		resourceName string
+		request      func(string) *models.Request
+	}{
+		{
+			name: "GCP network", provider: "gcp", module: "network",
+			resourceName: "network_test_01",
+			request: func(path string) *models.Request {
+				return testutil.NetworkRequest(
+					"create", path, "network_test_01", "network-test-01",
+					"subnet_test_01", "subnet-test-01", "10.90.0.0/24", "europe-west1",
+				)
+			},
+		},
+		{
+			name: "GCP storage", provider: "gcp", module: "storage",
+			resourceName: "bucket_test_01",
+			request: func(path string) *models.Request {
+				return testutil.StorageRequest(
+					"create", path, "bucket_test_01", "stage2026-bucket-test-01",
+					"EU", "STANDARD", true,
+				)
+			},
+		},
+		{
+			name: "GCP IAM", provider: "gcp", module: "iam",
+			resourceName: "iam_test_01",
+			request: func(path string) *models.Request {
+				return &models.Request{
+					Action: "create", Provider: "gcp", Module: "iam", ModulePath: path,
+					IAMResource: &models.IAMRequest{
+						ResourceName: "iam_test_01", AccountID: "iam-test-01",
+						DisplayName: "IAM test 01", Description: "Canonical path test",
+						ProjectID: "stage2026-project", Role: "roles/viewer",
+					},
+				}
+			},
+		},
+		{
+			name: "OCI compute", provider: "oci", module: "compute",
+			resourceName: "oci_vm_test_01",
+			request: func(path string) *models.Request {
+				return testutil.OCIComputeRequest(path, "oci_vm_test_01", "oci-vm-test-01", false)
+			},
+		},
+		{
+			name: "OCI network", provider: "oci", module: "network",
+			resourceName: "oci_network_test_01",
+			request: func(path string) *models.Request {
+				return testutil.OCINetworkRequest(
+					path, "oci_network_test_01", "oci-network-test-01",
+					"oci_subnet_test_01", "oci-subnet-test-01", "10.91.0.0/16", "10.91.1.0/24",
+					"oci_igw_test_01", "oci-igw-test-01", "oci_rt_test_01", "oci-rt-test-01", false,
+				)
+			},
+		},
+		{
+			name: "OCI storage", provider: "oci", module: "storage",
+			resourceName: "oci_bucket_test_01",
+			request: func(path string) *models.Request {
+				return testutil.OCIStorageRequest(
+					path, "oci_bucket_test_01", "oci-bucket-test-01",
+					"NoPublicAccess", "Standard", "Enabled", true,
+				)
+			},
+		},
+		{
+			name: "OCI IAM", provider: "oci", module: "iam",
+			resourceName: "oci_user_test_01",
+			request: func(path string) *models.Request {
+				return testutil.OCIIAMRequest(
+					path, "oci_user_test_01", "oci-user-test-01",
+					"oci_group_test_01", "oci-group-test-01", "oci_membership_test_01",
+					"oci_policy_test_01", "oci-policy-test-01",
+					[]string{"Allow group oci-group-test-01 to read metrics in tenancy"},
+				)
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			root := t.TempDir()
+			modulePath := filepath.Join(
+				root, "generated", test.provider, "modules", test.module,
+			)
+			if err := generator.GenerateAtomically(test.request(modulePath)); err != nil {
+				t.Fatal(err)
+			}
+			mainContent, err := os.ReadFile(filepath.Join(modulePath, "main.tf"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(mainContent), `"`+test.resourceName+`"`) {
+				t.Fatalf("canonical module does not contain %s", test.resourceName)
+			}
+			assertCanonicalRootAndNoLegacy(t, root, test.provider, test.module)
+		})
+	}
+}
+
+func assertCanonicalRootAndNoLegacy(
+	t *testing.T,
+	root string,
+	provider string,
+	module string,
+) {
+	t.Helper()
+	providerRoot := filepath.Join(root, "generated", provider)
+	legacy := filepath.Join(providerRoot, module)
+	if _, err := os.Stat(legacy); !os.IsNotExist(err) {
+		t.Fatalf("legacy path exists: %s", legacy)
+	}
+	rootMain, err := os.ReadFile(filepath.Join(providerRoot, "main.tf"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(rootMain), `module "`+module+`"`) ||
+		!strings.Contains(string(rootMain), `"./modules/`+module+`"`) {
+		t.Fatalf("root does not reference canonical %s module:\n%s", module, rootMain)
 	}
 }

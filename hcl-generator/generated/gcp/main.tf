@@ -1,3 +1,13 @@
+module "compute" {
+  source                  = "./modules/compute"
+  vm_test_26_image        = var.vm_test_26_image
+  vm_test_26_machine_type = var.vm_test_26_machine_type
+  vm_test_26_name         = var.vm_test_26_name
+  vm_test_26_network      = var.vm_test_26_network
+  vm_test_26_zone         = var.vm_test_26_zone
+}
+
+
 module "network" {
   source                   = "./modules/network"
   subnet_backend_01_cidr   = var.subnet_backend_01_cidr

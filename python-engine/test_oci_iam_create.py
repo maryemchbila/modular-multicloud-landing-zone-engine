@@ -180,7 +180,10 @@ class OCIIAMCreateTests(unittest.TestCase):
                 OCI_IAM_OUTPUT.resolve().parent / "compute"
             )
         )
-        with self.assertRaisesRegex(ValidationError, "generated/oci/iam"):
+        with self.assertRaisesRegex(
+            ValidationError,
+            "generated/oci/modules/iam",
+        ):
             validate_request(request)
 
         for action in ("update", "delete"):
