@@ -2,9 +2,11 @@
 
 import json
 import sys
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
+from app_governance import run_governance_after_generation
 from go_client import GoClientError, run_generator
 from request_builder import (
     ask_gcp_compute_delete_parameters,
@@ -91,18 +93,23 @@ def save_request(payload: dict) -> Path:
     return path
 
 
-def create_gcp_compute() -> None:
-    request = build_request()
-    validate_request(request)
-    request_path = save_request(request.to_dict())
+def _generate(payload: dict) -> bool:
+    request_path = save_request(payload)
     print(f"\nRequete valide sauvegardee : {request_path}")
     print("Appel du generateur Go...")
     output = run_generator(request_path)
     if output:
         print(f"\n{output}")
+    return True
 
 
-def create_oci_compute() -> None:
+def create_gcp_compute() -> bool:
+    request = build_request()
+    validate_request(request)
+    return _generate(request.to_dict())
+
+
+def create_oci_compute() -> bool:
     request = ask_oci_compute_parameters()
     validate_request(request)
     if request.resource.assign_public_ip:
@@ -110,37 +117,22 @@ def create_oci_compute() -> None:
             "\nAvertissement sécurité : une adresse IP publique sera "
             "attribuée à l'instance OCI."
         )
-    request_path = save_request(request.to_dict())
-    print(f"\nRequete valide sauvegardee : {request_path}")
-    print("Appel du generateur Go...")
-    output = run_generator(request_path)
-    if output:
-        print(f"\n{output}")
+    return _generate(request.to_dict())
 
 
-def create_oci_iam() -> None:
+def create_oci_iam() -> bool:
     request = ask_oci_iam_create_parameters()
     validate_request(request)
-    request_path = save_request(request.to_dict())
-    print(f"\nRequete valide sauvegardee : {request_path}")
-    print("Appel du generateur Go...")
-    output = run_generator(request_path)
-    if output:
-        print(f"\n{output}")
+    return _generate(request.to_dict())
 
 
-def update_oci_iam() -> None:
+def update_oci_iam() -> bool:
     request = ask_oci_iam_update_parameters()
     validate_request(request)
-    request_path = save_request(request.to_dict())
-    print(f"\nRequete valide sauvegardee : {request_path}")
-    print("Appel du generateur Go...")
-    output = run_generator(request_path)
-    if output:
-        print(f"\n{output}")
+    return _generate(request.to_dict())
 
 
-def delete_oci_iam(input_fn=input) -> None:
+def delete_oci_iam(input_fn=input) -> bool:
     request = ask_oci_iam_delete_parameters(input_fn)
     validate_request(request)
     resource = request.resource
@@ -166,21 +158,17 @@ def delete_oci_iam(input_fn=input) -> None:
     ).strip().lower()
     if confirmation not in {"y", "yes", "oui", "o"}:
         print("Suppression annulee.")
-        return
+        return False
 
-    request_path = save_request(request.to_dict())
-    print(f"\nRequete valide sauvegardee : {request_path}")
-    print("Appel du generateur Go...")
-    output = run_generator(request_path)
-    if output:
-        print(f"\n{output}")
+    _generate(request.to_dict())
     print(
         "\nTerraform OCI IAM code deleted locally. "
         "No OCI identity or policy was destroyed."
     )
+    return True
 
 
-def create_oci_network() -> None:
+def create_oci_network() -> bool:
     request = ask_oci_network_parameters()
     validate_request(request)
     if not request.resource.prohibit_public_ip_on_vnic:
@@ -188,15 +176,10 @@ def create_oci_network() -> None:
             "\nAvertissement sécurité : le subnet autorise "
             "potentiellement des IP publiques sur les VNIC."
         )
-    request_path = save_request(request.to_dict())
-    print(f"\nRequete valide sauvegardee : {request_path}")
-    print("Appel du generateur Go...")
-    output = run_generator(request_path)
-    if output:
-        print(f"\n{output}")
+    return _generate(request.to_dict())
 
 
-def create_oci_storage() -> None:
+def create_oci_storage() -> bool:
     request = ask_oci_storage_parameters()
     validate_request(request)
     if request.resource.access_type in {
@@ -212,15 +195,10 @@ def create_oci_storage() -> None:
             "\nAvertissement sécurité : le versioning du bucket OCI est "
             "désactivé."
         )
-    request_path = save_request(request.to_dict())
-    print(f"\nRequete valide sauvegardee : {request_path}")
-    print("Appel du generateur Go...")
-    output = run_generator(request_path)
-    if output:
-        print(f"\n{output}")
+    return _generate(request.to_dict())
 
 
-def update_oci_storage() -> None:
+def update_oci_storage() -> bool:
     request = ask_oci_storage_update_parameters()
     validate_request(request)
     if request.resource.access_type in {
@@ -236,15 +214,10 @@ def update_oci_storage() -> None:
             "\nAvertissement sécurité : le versioning du bucket OCI est "
             "désactivé."
         )
-    request_path = save_request(request.to_dict())
-    print(f"\nRequete valide sauvegardee : {request_path}")
-    print("Appel du generateur Go...")
-    output = run_generator(request_path)
-    if output:
-        print(f"\n{output}")
+    return _generate(request.to_dict())
 
 
-def delete_oci_storage(input_fn=input) -> None:
+def delete_oci_storage(input_fn=input) -> bool:
     request = ask_oci_storage_delete_parameters(input_fn)
     validate_request(request)
 
@@ -263,21 +236,17 @@ def delete_oci_storage(input_fn=input) -> None:
     ).strip().lower()
     if confirmation not in {"y", "yes", "oui", "o"}:
         print("Suppression annulée.")
-        return
+        return False
 
-    request_path = save_request(request.to_dict())
-    print(f"\nRequete valide sauvegardee : {request_path}")
-    print("Appel du generateur Go...")
-    output = run_generator(request_path)
-    if output:
-        print(f"\n{output}")
+    _generate(request.to_dict())
     print(
         "\nTerraform OCI Storage code deleted locally. "
         "No OCI bucket was destroyed."
     )
+    return True
 
 
-def update_oci_network() -> None:
+def update_oci_network() -> bool:
     request = ask_oci_network_update_parameters()
     validate_request(request)
     if not request.resource.prohibit_public_ip_on_vnic:
@@ -285,15 +254,10 @@ def update_oci_network() -> None:
             "\nAvertissement sécurité : le subnet autorise "
             "potentiellement des adresses IP publiques sur ses VNIC."
         )
-    request_path = save_request(request.to_dict())
-    print(f"\nRequete valide sauvegardee : {request_path}")
-    print("Appel du generateur Go...")
-    output = run_generator(request_path)
-    if output:
-        print(f"\n{output}")
+    return _generate(request.to_dict())
 
 
-def delete_oci_network(input_fn=input) -> None:
+def delete_oci_network(input_fn=input) -> bool:
     request = ask_oci_network_delete_parameters(input_fn)
     validate_request(request)
 
@@ -314,21 +278,17 @@ def delete_oci_network(input_fn=input) -> None:
     ).strip().lower()
     if confirmation not in {"y", "yes", "oui", "o"}:
         print("Suppression annulée.")
-        return
+        return False
 
-    request_path = save_request(request.to_dict())
-    print(f"\nRequete valide sauvegardee : {request_path}")
-    print("Appel du generateur Go...")
-    output = run_generator(request_path)
-    if output:
-        print(f"\n{output}")
+    _generate(request.to_dict())
     print(
         "\nTerraform OCI Network code deleted locally. "
         "No OCI network resource was destroyed."
     )
+    return True
 
 
-def update_oci_compute() -> None:
+def update_oci_compute() -> bool:
     request = ask_oci_compute_update_parameters()
     validate_request(request)
     if request.resource.assign_public_ip:
@@ -336,15 +296,10 @@ def update_oci_compute() -> None:
             "\nAvertissement sécurité : une adresse IP publique sera "
             "configurée sur l’instance OCI."
         )
-    request_path = save_request(request.to_dict())
-    print(f"\nRequete valide sauvegardee : {request_path}")
-    print("Appel du generateur Go...")
-    output = run_generator(request_path)
-    if output:
-        print(f"\n{output}")
+    return _generate(request.to_dict())
 
 
-def delete_oci_compute(input_fn=input) -> None:
+def delete_oci_compute(input_fn=input) -> bool:
     request = ask_oci_compute_delete_parameters(input_fn)
     validate_request(request)
 
@@ -355,43 +310,29 @@ def delete_oci_compute(input_fn=input) -> None:
     confirmation = input_fn("Confirmer la suppression ? [y/N] : ").strip().lower()
     if confirmation not in {"y", "yes", "oui", "o"}:
         print("Suppression annulée.")
-        return
+        return False
 
-    request_path = save_request(request.to_dict())
-    print(f"\nRequete valide sauvegardee : {request_path}")
-    print("Appel du generateur Go...")
-    output = run_generator(request_path)
-    if output:
-        print(f"\n{output}")
+    _generate(request.to_dict())
     print(
         "\nTerraform OCI Compute code deleted locally. "
         "No cloud instance was destroyed."
     )
+    return True
 
 
-def create_gcp_network() -> None:
+def create_gcp_network() -> bool:
     request = ask_gcp_network_parameters()
     validate_request(request)
-    request_path = save_request(request.to_dict())
-    print(f"\nRequete valide sauvegardee : {request_path}")
-    print("Appel du generateur Go...")
-    output = run_generator(request_path)
-    if output:
-        print(f"\n{output}")
+    return _generate(request.to_dict())
 
 
-def update_gcp_compute() -> None:
+def update_gcp_compute() -> bool:
     request = ask_gcp_compute_update_parameters()
     validate_request(request)
-    request_path = save_request(request.to_dict())
-    print(f"\nRequete valide sauvegardee : {request_path}")
-    print("Appel du generateur Go...")
-    output = run_generator(request_path)
-    if output:
-        print(f"\n{output}")
+    return _generate(request.to_dict())
 
 
-def delete_gcp_compute(input_fn=input) -> None:
+def delete_gcp_compute(input_fn=input) -> bool:
     request = ask_gcp_compute_delete_parameters(input_fn)
     validate_request(request)
 
@@ -401,28 +342,18 @@ def delete_gcp_compute(input_fn=input) -> None:
     confirmation = input_fn("Confirmer la suppression ? [y/N] : ").strip().lower()
     if confirmation not in {"y", "yes", "oui", "o"}:
         print("Suppression annulée.")
-        return
+        return False
 
-    request_path = save_request(request.to_dict())
-    print(f"\nRequete valide sauvegardee : {request_path}")
-    print("Appel du generateur Go...")
-    output = run_generator(request_path)
-    if output:
-        print(f"\n{output}")
+    return _generate(request.to_dict())
 
 
-def update_gcp_network() -> None:
+def update_gcp_network() -> bool:
     request = ask_gcp_network_update_parameters()
     validate_request(request)
-    request_path = save_request(request.to_dict())
-    print(f"\nRequete valide sauvegardee : {request_path}")
-    print("Appel du generateur Go...")
-    output = run_generator(request_path)
-    if output:
-        print(f"\n{output}")
+    return _generate(request.to_dict())
 
 
-def delete_gcp_network(input_fn=input) -> None:
+def delete_gcp_network(input_fn=input) -> bool:
     request = ask_gcp_network_delete_parameters(input_fn)
     validate_request(request)
 
@@ -437,50 +368,30 @@ def delete_gcp_network(input_fn=input) -> None:
     ).strip().lower()
     if confirmation not in {"y", "yes", "oui", "o"}:
         print("Suppression annulée.")
-        return
+        return False
 
-    request_path = save_request(request.to_dict())
-    print(f"\nRequete valide sauvegardee : {request_path}")
-    print("Appel du generateur Go...")
-    output = run_generator(request_path)
-    if output:
-        print(f"\n{output}")
+    return _generate(request.to_dict())
 
 
-def create_gcp_storage() -> None:
+def create_gcp_storage() -> bool:
     request = ask_gcp_storage_parameters()
     validate_request(request)
-    request_path = save_request(request.to_dict())
-    print(f"\nRequete valide sauvegardee : {request_path}")
-    print("Appel du generateur Go...")
-    output = run_generator(request_path)
-    if output:
-        print(f"\n{output}")
+    return _generate(request.to_dict())
 
 
-def create_gcp_iam() -> None:
+def create_gcp_iam() -> bool:
     request = ask_gcp_iam_parameters()
     validate_request(request)
-    request_path = save_request(request.to_dict())
-    print(f"\nRequete valide sauvegardee : {request_path}")
-    print("Appel du generateur Go...")
-    output = run_generator(request_path)
-    if output:
-        print(f"\n{output}")
+    return _generate(request.to_dict())
 
 
-def update_gcp_iam() -> None:
+def update_gcp_iam() -> bool:
     request = ask_gcp_iam_update_parameters()
     validate_request(request)
-    request_path = save_request(request.to_dict())
-    print(f"\nRequete valide sauvegardee : {request_path}")
-    print("Appel du generateur Go...")
-    output = run_generator(request_path)
-    if output:
-        print(f"\n{output}")
+    return _generate(request.to_dict())
 
 
-def delete_gcp_iam(input_fn=input) -> None:
+def delete_gcp_iam(input_fn=input) -> bool:
     request = ask_gcp_iam_delete_parameters(input_fn)
     validate_request(request)
 
@@ -492,29 +403,20 @@ def delete_gcp_iam(input_fn=input) -> None:
     confirmation = input_fn("Confirmer la suppression ? [y/N] : ").strip().lower()
     if confirmation not in {"y", "yes", "oui", "o"}:
         print("Suppression annulée.")
-        return
+        return False
 
-    request_path = save_request(request.to_dict())
-    print(f"\nRequete valide sauvegardee : {request_path}")
-    print("Appel du generateur Go...")
-    output = run_generator(request_path)
-    if output:
-        print(f"\n{output}")
+    _generate(request.to_dict())
     print("\nTerraform IAM code deleted locally. No cloud identity was destroyed.")
+    return True
 
 
-def update_gcp_storage() -> None:
+def update_gcp_storage() -> bool:
     request = ask_gcp_storage_update_parameters()
     validate_request(request)
-    request_path = save_request(request.to_dict())
-    print(f"\nRequete valide sauvegardee : {request_path}")
-    print("Appel du generateur Go...")
-    output = run_generator(request_path)
-    if output:
-        print(f"\n{output}")
+    return _generate(request.to_dict())
 
 
-def delete_gcp_storage(input_fn=input) -> None:
+def delete_gcp_storage(input_fn=input) -> bool:
     request = ask_gcp_storage_delete_parameters(input_fn)
     validate_request(request)
 
@@ -525,91 +427,45 @@ def delete_gcp_storage(input_fn=input) -> None:
     confirmation = input_fn("Confirmer la suppression ? [y/N] : ").strip().lower()
     if confirmation not in {"y", "yes", "oui", "o"}:
         print("Suppression annulée.")
-        return
+        return False
 
-    request_path = save_request(request.to_dict())
-    print(f"\nRequete valide sauvegardee : {request_path}")
-    print("Appel du generateur Go...")
-    output = run_generator(request_path)
-    if output:
-        print(f"\n{output}")
+    _generate(request.to_dict())
     print("\nTerraform code deleted locally. No cloud resource was destroyed.")
+    return True
 
 
-def dispatch(provider: str, module: str, action: str) -> None:
-    if provider == "oci" and module == "compute" and action == "create":
-        create_oci_compute()
-        return
-    if provider == "oci" and module == "compute" and action == "update":
-        update_oci_compute()
-        return
-    if provider == "oci" and module == "compute" and action == "delete":
-        delete_oci_compute()
-        return
-    if provider == "oci" and module == "network" and action == "create":
-        create_oci_network()
-        return
-    if provider == "oci" and module == "network" and action == "update":
-        update_oci_network()
-        return
-    if provider == "oci" and module == "network" and action == "delete":
-        delete_oci_network()
-        return
-    if provider == "oci" and module == "storage" and action == "create":
-        create_oci_storage()
-        return
-    if provider == "oci" and module == "storage" and action == "update":
-        update_oci_storage()
-        return
-    if provider == "oci" and module == "storage" and action == "delete":
-        delete_oci_storage()
-        return
-    if provider == "oci" and module == "iam" and action == "create":
-        create_oci_iam()
-        return
-    if provider == "oci" and module == "iam" and action == "update":
-        update_oci_iam()
-        return
-    if provider == "oci" and module == "iam" and action == "delete":
-        delete_oci_iam()
-        return
-    if provider == "gcp" and module == "compute" and action == "create":
-        create_gcp_compute()
-        return
-    if provider == "gcp" and module == "compute" and action == "update":
-        update_gcp_compute()
-        return
-    if provider == "gcp" and module == "compute" and action == "delete":
-        delete_gcp_compute()
-        return
-    if provider == "gcp" and module == "network" and action == "create":
-        create_gcp_network()
-        return
-    if provider == "gcp" and module == "network" and action == "update":
-        update_gcp_network()
-        return
-    if provider == "gcp" and module == "network" and action == "delete":
-        delete_gcp_network()
-        return
-    if provider == "gcp" and module == "storage" and action == "create":
-        create_gcp_storage()
-        return
-    if provider == "gcp" and module == "storage" and action == "update":
-        update_gcp_storage()
-        return
-    if provider == "gcp" and module == "storage" and action == "delete":
-        delete_gcp_storage()
-        return
-    if provider == "gcp" and module == "iam" and action == "create":
-        create_gcp_iam()
-        return
-    if provider == "gcp" and module == "iam" and action == "update":
-        update_gcp_iam()
-        return
-    if provider == "gcp" and module == "iam" and action == "delete":
-        delete_gcp_iam()
-        return
+def dispatch(provider: str, module: str, action: str) -> bool:
+    handlers: dict[tuple[str, str, str], Callable[[], bool]] = {
+        ("oci", "compute", "create"): create_oci_compute,
+        ("oci", "compute", "update"): update_oci_compute,
+        ("oci", "compute", "delete"): delete_oci_compute,
+        ("oci", "network", "create"): create_oci_network,
+        ("oci", "network", "update"): update_oci_network,
+        ("oci", "network", "delete"): delete_oci_network,
+        ("oci", "storage", "create"): create_oci_storage,
+        ("oci", "storage", "update"): update_oci_storage,
+        ("oci", "storage", "delete"): delete_oci_storage,
+        ("oci", "iam", "create"): create_oci_iam,
+        ("oci", "iam", "update"): update_oci_iam,
+        ("oci", "iam", "delete"): delete_oci_iam,
+        ("gcp", "compute", "create"): create_gcp_compute,
+        ("gcp", "compute", "update"): update_gcp_compute,
+        ("gcp", "compute", "delete"): delete_gcp_compute,
+        ("gcp", "network", "create"): create_gcp_network,
+        ("gcp", "network", "update"): update_gcp_network,
+        ("gcp", "network", "delete"): delete_gcp_network,
+        ("gcp", "storage", "create"): create_gcp_storage,
+        ("gcp", "storage", "update"): update_gcp_storage,
+        ("gcp", "storage", "delete"): delete_gcp_storage,
+        ("gcp", "iam", "create"): create_gcp_iam,
+        ("gcp", "iam", "update"): update_gcp_iam,
+        ("gcp", "iam", "delete"): delete_gcp_iam,
+    }
+    handler = handlers.get((provider, module, action))
+    if handler is not None:
+        return handler()
     print(f"Fonctionnalité non encore implémentée : {provider} / {module} / {action}")
+    return False
 
 
 def main() -> int:
@@ -620,7 +476,12 @@ def main() -> int:
         provider = choose_provider()
         module = choose_module()
         action = choose_action()
-        dispatch(provider, module, action)
+        generation_succeeded = dispatch(provider, module, action)
+        if generation_succeeded is not True:
+            print("\nGeneration : NOT_RUN")
+            print("Governance : NOT_RUN")
+            return 0
+        run_governance_after_generation(provider)
         return 0
     except ValidationError as exc:
         print(f"\nParametres invalides :\n{exc}", file=sys.stderr)
@@ -628,6 +489,8 @@ def main() -> int:
         print(f"\n{exc}", file=sys.stderr)
     except GoClientError as exc:
         print(f"\nErreur retournee par Go :\n{exc}", file=sys.stderr)
+        print("Generation : FAIL", file=sys.stderr)
+        print("Governance : NOT_RUN", file=sys.stderr)
     except (EOFError, KeyboardInterrupt):
         print("\nOperation annulee.", file=sys.stderr)
     except OSError as exc:
