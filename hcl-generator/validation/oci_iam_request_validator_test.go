@@ -104,10 +104,11 @@ func TestValidateOCIIAMRejectsInvalidOCIDsAndPath(t *testing.T) {
 					t.TempDir(),
 					"generated",
 					"oci",
+					"modules",
 					"compute",
 				)
 			},
-			expected: "generated/oci/iam",
+			expected: "generated/oci/modules/iam",
 		},
 	}
 	for _, test := range tests {
@@ -261,6 +262,7 @@ func validOCIIAMRequest(t *testing.T) *models.Request {
 			t.TempDir(),
 			"generated",
 			"oci",
+			"modules",
 			"iam",
 		),
 		OCIIAMResource: &models.OCIIAMRequest{

@@ -17,6 +17,7 @@ func TestOCIComputeCreateAndDuplicateRollback(t *testing.T) {
 		t.TempDir(),
 		"generated",
 		"oci",
+		"modules",
 		"compute",
 	)
 	request := testutil.OCIComputeRequest(
@@ -125,6 +126,7 @@ func TestOCIComputeCreateKeepsIndependentInstance(t *testing.T) {
 		t.TempDir(),
 		"generated",
 		"oci",
+		"modules",
 		"compute",
 	)
 	for _, request := range []*models.Request{
@@ -169,8 +171,8 @@ func TestOCIComputeCreateKeepsIndependentInstance(t *testing.T) {
 
 func TestGCPAndOCIComputeOutputsAreIsolated(t *testing.T) {
 	root := t.TempDir()
-	gcpPath := filepath.Join(root, "generated", "gcp", "compute")
-	ociPath := filepath.Join(root, "generated", "oci", "compute")
+	gcpPath := filepath.Join(root, "generated", "gcp", "modules", "compute")
+	ociPath := filepath.Join(root, "generated", "oci", "modules", "compute")
 
 	if err := generator.GenerateAtomically(testutil.OCIComputeRequest(
 		ociPath,

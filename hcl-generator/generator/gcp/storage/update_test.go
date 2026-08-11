@@ -14,7 +14,7 @@ import (
 )
 
 func TestStorageUpdateScenarios(t *testing.T) {
-	modulePath := t.TempDir()
+	modulePath := testutil.CanonicalModulePath(t, "gcp", "storage")
 	if err := generator.GenerateAtomically(testutil.StorageRequest(
 		"create",
 		modulePath,
@@ -155,7 +155,7 @@ func TestStorageUpdateScenarios(t *testing.T) {
 }
 
 func TestStorageUpdateMigratesLegacyVariables(t *testing.T) {
-	modulePath := t.TempDir()
+	modulePath := testutil.CanonicalModulePath(t, "gcp", "storage")
 	writeLegacyStorageFixture(t, modulePath)
 	before := testutil.SnapshotTerraformFiles(t, modulePath)
 
@@ -209,7 +209,7 @@ func TestStorageUpdateMigratesLegacyVariables(t *testing.T) {
 }
 
 func TestStorageUpdateDoesNotModifyComputeOrNetwork(t *testing.T) {
-	root := t.TempDir()
+	root := filepath.Join(t.TempDir(), "generated", "gcp", "modules")
 	computePath := filepath.Join(root, "compute")
 	networkPath := filepath.Join(root, "network")
 	storagePath := filepath.Join(root, "storage")
@@ -276,12 +276,12 @@ func TestStorageUpdateDoesNotModifyComputeOrNetwork(t *testing.T) {
 		t.Fatalf("Storage Update failed: %v", err)
 	}
 
-	testutil.AssertTerraformFilesEqual(
+	testutil.AssertModuleFilesEqual(
 		t,
 		computeBefore,
 		testutil.SnapshotTerraformFiles(t, computePath))
 
-	testutil.AssertTerraformFilesEqual(
+	testutil.AssertModuleFilesEqual(
 		t,
 		networkBefore,
 		testutil.SnapshotTerraformFiles(t, networkPath))
@@ -336,7 +336,7 @@ output "bucket_legacy_01_url" {
 	for filename, content := range fixtures {
 		formatted := hclwrite.Format([]byte(strings.TrimSpace(content) + "\n"))
 		if err := os.WriteFile(
-			filepath.Join(modulePath, filename),
+			testutil.TerraformFilePath(modulePath, filename),
 			formatted,
 			0o644,
 		); err != nil {

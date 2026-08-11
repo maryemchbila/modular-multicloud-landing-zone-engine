@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"hcl-generator/generator"
+	"hcl-generator/generator/common"
 	"hcl-generator/models"
 	"hcl-generator/validation"
 )
@@ -67,7 +68,7 @@ func main() {
 	)
 	fmt.Println(
 		"-",
-		filepath.Join(request.ModulePath, "terraform.tfvars"),
+		common.TerraformTfvarsPath(request.ModulePath),
 	)
 	fmt.Println(
 		"-",

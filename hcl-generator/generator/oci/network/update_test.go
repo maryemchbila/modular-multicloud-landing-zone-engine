@@ -365,7 +365,7 @@ func TestOCINetworkUpdateRejectsMissingDeclarationsWithoutChanges(
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			modulePath := createExistingOCINetwork(t)
-			targetPath := filepath.Join(modulePath, test.filename)
+			targetPath := testutil.TerraformFilePath(modulePath, test.filename)
 			file, err := common.LoadExistingFile(targetPath)
 			if err != nil {
 				t.Fatalf("load %s: %v", test.filename, err)
@@ -397,9 +397,9 @@ func TestOCINetworkUpdateRejectsMissingDeclarationsWithoutChanges(
 
 func TestOCINetworkUpdateIsIsolatedFromOtherModules(t *testing.T) {
 	root := t.TempDir()
-	gcpNetworkPath := filepath.Join(root, "generated", "gcp", "network")
-	ociComputePath := filepath.Join(root, "generated", "oci", "compute")
-	ociNetworkPath := filepath.Join(root, "generated", "oci", "network")
+	gcpNetworkPath := filepath.Join(root, "generated", "gcp", "modules", "network")
+	ociComputePath := filepath.Join(root, "generated", "oci", "modules", "compute")
+	ociNetworkPath := filepath.Join(root, "generated", "oci", "modules", "network")
 
 	seedRequests := []*models.Request{
 		testutil.NetworkRequest(
@@ -452,7 +452,7 @@ func TestOCINetworkUpdateIsIsolatedFromOtherModules(t *testing.T) {
 		gcpBefore,
 		testutil.SnapshotTerraformFiles(t, gcpNetworkPath),
 	)
-	testutil.AssertTerraformFilesEqual(
+	testutil.AssertModuleFilesEqual(
 		t,
 		ociComputeBefore,
 		testutil.SnapshotTerraformFiles(t, ociComputePath),
@@ -465,6 +465,7 @@ func createExistingOCINetwork(t testing.TB) string {
 		t.TempDir(),
 		"generated",
 		"oci",
+		"modules",
 		"network",
 	)
 	request := testutil.OCINetworkRequest(

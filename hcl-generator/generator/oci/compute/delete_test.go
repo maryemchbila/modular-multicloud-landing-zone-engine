@@ -41,8 +41,8 @@ func TestOCIComputeDeleteExistingResourceKeepsIndependentInstance(
 	createOCIComputeFixture(t, modulePath, "oci_vm_delete_b_01")
 	gcpModulePath := filepath.Join(
 		filepath.Dir(filepath.Dir(filepath.Dir(modulePath))),
-		"generated",
 		"gcp",
+		"modules",
 		"compute",
 	)
 	gcpCreate := testutil.ComputeRequest(
@@ -263,6 +263,7 @@ func ociComputeModulePath(t *testing.T) string {
 		t.TempDir(),
 		"generated",
 		"oci",
+		"modules",
 		"compute",
 	)
 }

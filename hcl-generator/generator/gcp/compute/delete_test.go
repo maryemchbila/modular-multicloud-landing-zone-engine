@@ -16,7 +16,7 @@ import (
 )
 
 func TestComputeDeleteRemovesOnlyTargetResource(t *testing.T) {
-	modulePath := t.TempDir()
+	modulePath := testutil.CanonicalModulePath(t, "gcp", "compute")
 	for _, resourceName := range []string{"vm_delete_a_01", "vm_delete_b_01"} {
 		if err := generator.GenerateAtomically(testutil.ComputeRequest(
 			"create",
@@ -82,7 +82,7 @@ func TestComputeDeleteRemovesOnlyTargetResource(t *testing.T) {
 }
 
 func TestComputeDeleteMissingResourceDoesNotModifyFiles(t *testing.T) {
-	modulePath := t.TempDir()
+	modulePath := testutil.CanonicalModulePath(t, "gcp", "compute")
 	if err := generator.GenerateAtomically(testutil.ComputeRequest(
 		"create",
 		modulePath,
@@ -105,7 +105,7 @@ func TestComputeDeleteMissingResourceDoesNotModifyFiles(t *testing.T) {
 }
 
 func TestComputeDeleteBlocksReferencedResource(t *testing.T) {
-	modulePath := t.TempDir()
+	modulePath := testutil.CanonicalModulePath(t, "gcp", "compute")
 	for _, resourceName := range []string{"vm_source_01", "vm_consumer_01"} {
 		if err := generator.GenerateAtomically(testutil.ComputeRequest(
 			"create",
@@ -157,7 +157,7 @@ func TestComputeDeleteBlocksReferencedResource(t *testing.T) {
 }
 
 func TestComputeDeleteNonRegressionAndModuleIsolation(t *testing.T) {
-	root := t.TempDir()
+	root := filepath.Join(t.TempDir(), "generated", "gcp", "modules")
 	computePath := filepath.Join(root, "compute")
 	networkPath := filepath.Join(root, "network")
 	storagePath := filepath.Join(root, "storage")
@@ -240,12 +240,12 @@ func TestComputeDeleteNonRegressionAndModuleIsolation(t *testing.T) {
 		t.Fatalf("Compute Update after Delete failed: %v", err)
 	}
 
-	testutil.AssertTerraformFilesEqual(
+	testutil.AssertModuleFilesEqual(
 		t,
 		networkBefore,
 		testutil.SnapshotTerraformFiles(t, networkPath))
 
-	testutil.AssertTerraformFilesEqual(
+	testutil.AssertModuleFilesEqual(
 		t,
 		storageBefore,
 		testutil.SnapshotTerraformFiles(t, storagePath))
@@ -254,7 +254,7 @@ func TestComputeDeleteNonRegressionAndModuleIsolation(t *testing.T) {
 
 func TestComputeDeleteValidationUsesOnlyResourceName(t *testing.T) {
 	request := testutil.ComputeDeleteRequest(
-		filepath.Join(t.TempDir(), "generated", "gcp", "compute"),
+		filepath.Join(t.TempDir(), "generated", "gcp", "modules", "compute"),
 		"vm_delete_test_01")
 
 	if err := validation.ValidateRequest(request); err != nil {

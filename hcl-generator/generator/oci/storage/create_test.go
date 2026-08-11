@@ -162,11 +162,11 @@ func TestOCIStorageDuplicateLeavesAllFilesUnchanged(t *testing.T) {
 
 func TestOCIStorageCreateDoesNotModifyOtherModules(t *testing.T) {
 	root := t.TempDir()
-	gcpComputePath := filepath.Join(root, "generated", "gcp", "compute")
-	gcpStoragePath := filepath.Join(root, "generated", "gcp", "storage")
-	ociComputePath := filepath.Join(root, "generated", "oci", "compute")
-	ociNetworkPath := filepath.Join(root, "generated", "oci", "network")
-	ociStoragePath := filepath.Join(root, "generated", "oci", "storage")
+	gcpComputePath := filepath.Join(root, "generated", "gcp", "modules", "compute")
+	gcpStoragePath := filepath.Join(root, "generated", "gcp", "modules", "storage")
+	ociComputePath := filepath.Join(root, "generated", "oci", "modules", "compute")
+	ociNetworkPath := filepath.Join(root, "generated", "oci", "modules", "network")
+	ociStoragePath := filepath.Join(root, "generated", "oci", "modules", "storage")
 
 	seedRequests := []*models.Request{
 		testutil.ComputeRequest(
@@ -232,7 +232,7 @@ func TestOCIStorageCreateDoesNotModifyOtherModules(t *testing.T) {
 		t.Fatalf("OCI Storage Create failed: %v", err)
 	}
 	for index, path := range paths {
-		testutil.AssertTerraformFilesEqual(
+		testutil.AssertModuleFilesEqual(
 			t,
 			before[index],
 			testutil.SnapshotTerraformFiles(t, path),
@@ -242,5 +242,5 @@ func TestOCIStorageCreateDoesNotModifyOtherModules(t *testing.T) {
 
 func storageModulePath(t *testing.T) string {
 	t.Helper()
-	return filepath.Join(t.TempDir(), "generated", "oci", "storage")
+	return filepath.Join(t.TempDir(), "generated", "oci", "modules", "storage")
 }

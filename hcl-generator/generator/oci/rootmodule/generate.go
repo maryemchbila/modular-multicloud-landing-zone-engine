@@ -3,6 +3,7 @@ package rootmodule
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	commonroot "hcl-generator/generator/common/rootmodule"
@@ -61,6 +62,9 @@ func addOCIChildProviderRequirements(plan *commonroot.Plan, rootPath string) {
 		}
 		versionsPath := filepath.Join(rootPath, "modules", moduleName, "versions.tf")
 		if _, present := plan.Prepared[versionsPath]; !present {
+			if _, err := os.Stat(versionsPath); err == nil {
+				continue
+			}
 			plan.Prepared[versionsPath] = content
 		}
 	}

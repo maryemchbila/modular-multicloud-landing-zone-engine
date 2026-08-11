@@ -116,10 +116,11 @@ func TestValidateOCIComputeRequiresBooleanAndDedicatedPath(t *testing.T) {
 		t.TempDir(),
 		"generated",
 		"gcp",
+		"modules",
 		"compute",
 	)
 	err = ValidateRequest(request)
-	if err == nil || !strings.Contains(err.Error(), "generated/oci/compute") {
+	if err == nil || !strings.Contains(err.Error(), "generated/oci/modules/compute") {
 		t.Fatalf("wrong OCI path returned unexpected error: %v", err)
 	}
 }
@@ -135,6 +136,7 @@ func validOCIComputeRequest(t *testing.T) *models.Request {
 			t.TempDir(),
 			"generated",
 			"oci",
+			"modules",
 			"compute",
 		),
 		OCIComputeResource: &models.OCIComputeRequest{

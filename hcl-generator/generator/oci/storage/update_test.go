@@ -158,10 +158,10 @@ func TestOCIStorageUpdateMissingVariableIsAtomic(t *testing.T) {
 
 func TestOCIStorageUpdatePreservesOtherBucketsAndModules(t *testing.T) {
 	root := t.TempDir()
-	storagePath := filepath.Join(root, "generated", "oci", "storage")
-	computePath := filepath.Join(root, "generated", "oci", "compute")
-	networkPath := filepath.Join(root, "generated", "oci", "network")
-	gcpPath := filepath.Join(root, "generated", "gcp", "compute")
+	storagePath := filepath.Join(root, "generated", "oci", "modules", "storage")
+	computePath := filepath.Join(root, "generated", "oci", "modules", "compute")
+	networkPath := filepath.Join(root, "generated", "oci", "modules", "network")
+	gcpPath := filepath.Join(root, "generated", "gcp", "modules", "compute")
 
 	first := testutil.OCIStorageRequest(
 		storagePath,
@@ -244,7 +244,7 @@ func TestOCIStorageUpdatePreservesOtherBucketsAndModules(t *testing.T) {
 		t.Fatal("the other OCI Storage bucket was modified or removed")
 	}
 	for index, path := range []string{computePath, networkPath, gcpPath} {
-		testutil.AssertTerraformFilesEqual(
+		testutil.AssertModuleFilesEqual(
 			t,
 			beforeOtherModules[index],
 			testutil.SnapshotTerraformFiles(t, path),

@@ -16,7 +16,7 @@ import (
 )
 
 func TestIAMUpdateDisplayNameOnly(t *testing.T) {
-	modulePath := filepath.Join(t.TempDir(), "generated", "gcp", "iam")
+	modulePath := filepath.Join(t.TempDir(), "generated", "gcp", "modules", "iam")
 	create := iamRequest(
 		modulePath,
 		"sa_logging_01",
@@ -55,7 +55,7 @@ func TestIAMUpdateDisplayNameOnly(t *testing.T) {
 }
 
 func TestIAMUpdateRoleOnly(t *testing.T) {
-	modulePath := filepath.Join(t.TempDir(), "generated", "gcp", "iam")
+	modulePath := filepath.Join(t.TempDir(), "generated", "gcp", "modules", "iam")
 	create := iamRequest(
 		modulePath,
 		"sa_storage_viewer_01",
@@ -94,7 +94,7 @@ func TestIAMUpdateRoleOnly(t *testing.T) {
 }
 
 func TestIAMUpdateDescriptionOnly(t *testing.T) {
-	modulePath := filepath.Join(t.TempDir(), "generated", "gcp", "iam")
+	modulePath := filepath.Join(t.TempDir(), "generated", "gcp", "modules", "iam")
 	create := iamRequest(
 		modulePath,
 		"sa_monitoring_01",
@@ -132,7 +132,7 @@ func TestIAMUpdateDescriptionOnly(t *testing.T) {
 }
 
 func TestIAMUpdateMissingResourcesDoNotModifyFiles(t *testing.T) {
-	modulePath := filepath.Join(t.TempDir(), "generated", "gcp", "iam")
+	modulePath := filepath.Join(t.TempDir(), "generated", "gcp", "modules", "iam")
 	create := iamRequest(
 		modulePath,
 		"sa_logging_01",
@@ -260,6 +260,7 @@ func TestIAMUpdateMissingDefinitionsDoNotModifyFiles(t *testing.T) {
 				t.TempDir(),
 				"generated",
 				"gcp",
+				"modules",
 				"iam",
 			)
 			create := iamRequest(
@@ -291,7 +292,7 @@ func TestIAMUpdateMissingDefinitionsDoNotModifyFiles(t *testing.T) {
 				t.Fatalf("unexpected fixture filename: %s", test.filename)
 			}
 			if err := os.WriteFile(
-				filepath.Join(modulePath, test.filename),
+				testutil.TerraformFilePath(modulePath, test.filename),
 				content,
 				0o644,
 			); err != nil {

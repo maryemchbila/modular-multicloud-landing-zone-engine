@@ -225,7 +225,7 @@ func networkReferencedByComputeConfiguration(
 	}
 
 	computeTfvars, err := common.LoadOrCreateFile(
-		filepath.Join(computePath, "terraform.tfvars"),
+		common.TerraformTfvarsPath(computePath),
 	)
 	if err != nil {
 		return false, fmt.Errorf(

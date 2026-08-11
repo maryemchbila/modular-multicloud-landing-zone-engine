@@ -16,6 +16,15 @@ var TerraformFilenames = []string{
 	"outputs.tf",
 }
 
+func CanonicalModulePath(t testing.TB, provider, module string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "generated", provider, "modules", module)
+	if err := os.MkdirAll(path, 0o755); err != nil {
+		t.Fatalf("create canonical module path: %v", err)
+	}
+	return path
+}
+
 func SnapshotTerraformFiles(
 	t testing.TB,
 	modulePath string,
@@ -23,13 +32,21 @@ func SnapshotTerraformFiles(
 	t.Helper()
 	result := make(map[string][]byte, len(TerraformFilenames))
 	for _, filename := range TerraformFilenames {
-		content, err := os.ReadFile(filepath.Join(modulePath, filename))
+		content, err := os.ReadFile(TerraformFilePath(modulePath, filename))
 		if err != nil {
 			t.Fatalf("read %s: %v", filename, err)
 		}
 		result[filename] = content
 	}
 	return result
+}
+
+func TerraformFilePath(modulePath, filename string) string {
+	if filename == "terraform.tfvars" &&
+		filepath.Base(filepath.Dir(filepath.Clean(modulePath))) == "modules" {
+		return filepath.Join(filepath.Dir(filepath.Dir(modulePath)), filename)
+	}
+	return filepath.Join(modulePath, filename)
 }
 
 func AssertTerraformFilesEqual(
@@ -39,6 +56,19 @@ func AssertTerraformFilesEqual(
 ) {
 	t.Helper()
 	for _, filename := range TerraformFilenames {
+		if !bytes.Equal(before[filename], after[filename]) {
+			t.Fatalf("%s changed unexpectedly", filename)
+		}
+	}
+}
+
+func AssertModuleFilesEqual(
+	t testing.TB,
+	before map[string][]byte,
+	after map[string][]byte,
+) {
+	t.Helper()
+	for _, filename := range []string{"main.tf", "variables.tf", "outputs.tf"} {
 		if !bytes.Equal(before[filename], after[filename]) {
 			t.Fatalf("%s changed unexpectedly", filename)
 		}

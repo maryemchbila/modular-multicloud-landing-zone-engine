@@ -3,7 +3,6 @@ package compute_test
 import (
 	"bytes"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -15,7 +14,7 @@ import (
 )
 
 func TestComputeUpdateExistingResource(t *testing.T) {
-	modulePath := t.TempDir()
+	modulePath := testutil.CanonicalModulePath(t, "gcp", "compute")
 	writeLegacyComputeFixture(t, modulePath)
 
 	beforeFirst := testutil.SnapshotTerraformFiles(t, modulePath)
@@ -98,7 +97,7 @@ func TestComputeUpdateExistingResource(t *testing.T) {
 }
 
 func TestComputeUpdateMissingResourceDoesNotModifyFiles(t *testing.T) {
-	modulePath := t.TempDir()
+	modulePath := testutil.CanonicalModulePath(t, "gcp", "compute")
 	writeLegacyComputeFixture(t, modulePath)
 	before := testutil.SnapshotTerraformFiles(t, modulePath)
 
@@ -123,7 +122,7 @@ func TestComputeUpdateMissingResourceDoesNotModifyFiles(t *testing.T) {
 }
 
 func TestComputeUpdateRemovesLegacyVariablesAfterLastReference(t *testing.T) {
-	modulePath := t.TempDir()
+	modulePath := testutil.CanonicalModulePath(t, "gcp", "compute")
 	writeLegacyComputeFixture(t, modulePath)
 
 	for _, resourceName := range []string{"vm_other_01", "vm_clean_test_01"} {
@@ -242,7 +241,7 @@ output "instance_id" {
 	for filename, content := range fixtures {
 		formatted := hclwrite.Format([]byte(strings.TrimSpace(content) + "\n"))
 		if err := os.WriteFile(
-			filepath.Join(modulePath, filename),
+			testutil.TerraformFilePath(modulePath, filename),
 			formatted,
 			0o644,
 		); err != nil {

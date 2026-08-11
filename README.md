@@ -38,6 +38,14 @@
 
 **- IAM**
 
+**## Chemins de generation**
+
+**- Production : `hcl-generator/generated/<provider>/modules/<module>`**
+
+**- Fixtures statiques : `hcl-generator/testdata/`**
+
+**Le nom d'une ressource ne determine jamais si elle est une fixture de test.**
+
 
 
 **## Actions supportées**

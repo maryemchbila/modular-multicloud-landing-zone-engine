@@ -52,15 +52,17 @@ InputFunction = Callable[[str], str]
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 GENERATED_ROOT = PROJECT_ROOT / "hcl-generator" / "generated"
 GCP_ROOT = GENERATED_ROOT / "gcp"
-GCP_COMPUTE_OUTPUT = GCP_ROOT / "compute"
-GCP_NETWORK_OUTPUT = GCP_ROOT / "network"
-GCP_STORAGE_OUTPUT = GCP_ROOT / "storage"
-GCP_IAM_OUTPUT = GCP_ROOT / "iam"
+GCP_MODULES_ROOT = GCP_ROOT / "modules"
+GCP_COMPUTE_OUTPUT = GCP_MODULES_ROOT / "compute"
+GCP_NETWORK_OUTPUT = GCP_MODULES_ROOT / "network"
+GCP_STORAGE_OUTPUT = GCP_MODULES_ROOT / "storage"
+GCP_IAM_OUTPUT = GCP_MODULES_ROOT / "iam"
 OCI_ROOT = GENERATED_ROOT / "oci"
-OCI_COMPUTE_OUTPUT = OCI_ROOT / "compute"
-OCI_NETWORK_OUTPUT = OCI_ROOT / "network"
-OCI_STORAGE_OUTPUT = OCI_ROOT / "storage"
-OCI_IAM_OUTPUT = OCI_ROOT / "iam"
+OCI_MODULES_ROOT = OCI_ROOT / "modules"
+OCI_COMPUTE_OUTPUT = OCI_MODULES_ROOT / "compute"
+OCI_NETWORK_OUTPUT = OCI_MODULES_ROOT / "network"
+OCI_STORAGE_OUTPUT = OCI_MODULES_ROOT / "storage"
+OCI_IAM_OUTPUT = OCI_MODULES_ROOT / "iam"
 
 
 def _ask(label: str, default: str, input_fn: InputFunction) -> str:

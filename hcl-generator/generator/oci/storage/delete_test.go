@@ -18,10 +18,10 @@ import (
 
 func TestOCIStorageDeleteRemovesOnlyTargetBucket(t *testing.T) {
 	root := t.TempDir()
-	storagePath := filepath.Join(root, "generated", "oci", "storage")
-	computePath := filepath.Join(root, "generated", "oci", "compute")
-	networkPath := filepath.Join(root, "generated", "oci", "network")
-	gcpPath := filepath.Join(root, "generated", "gcp", "storage")
+	storagePath := filepath.Join(root, "generated", "oci", "modules", "storage")
+	computePath := filepath.Join(root, "generated", "oci", "modules", "compute")
+	networkPath := filepath.Join(root, "generated", "oci", "modules", "network")
+	gcpPath := filepath.Join(root, "generated", "gcp", "modules", "storage")
 
 	targetName := "oci_bucket_delete_a_01"
 	otherName := "oci_bucket_delete_b_01"
@@ -102,7 +102,7 @@ func TestOCIStorageDeleteRemovesOnlyTargetBucket(t *testing.T) {
 		}
 	}
 	for index, path := range []string{computePath, networkPath, gcpPath} {
-		testutil.AssertTerraformFilesEqual(
+		testutil.AssertModuleFilesEqual(
 			t,
 			otherBefore[index],
 			testutil.SnapshotTerraformFiles(t, path),

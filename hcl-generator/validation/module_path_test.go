@@ -8,12 +8,9 @@ import (
 	"hcl-generator/validation"
 )
 
-func TestValidateRequestAcceptsLegacyAndCanonicalModulePaths(t *testing.T) {
+func TestValidateRequestAcceptsOnlyCanonicalModulePath(t *testing.T) {
 	root := t.TempDir()
-	for _, modulePath := range []string{
-		filepath.Join(root, "generated", "gcp", "compute"),
-		filepath.Join(root, "generated", "gcp", "modules", "compute"),
-	} {
+	newRequest := func(modulePath string) *models.Request {
 		request := &models.Request{
 			Action:     "create",
 			Provider:   "gcp",
@@ -28,8 +25,16 @@ func TestValidateRequestAcceptsLegacyAndCanonicalModulePaths(t *testing.T) {
 				Network:      "default",
 			},
 		}
-		if err := validation.ValidateRequest(request); err != nil {
-			t.Fatalf("path %s rejected: %v", modulePath, err)
-		}
+		return request
+	}
+
+	legacy := filepath.Join(root, "generated", "gcp", "compute")
+	if err := validation.ValidateRequest(newRequest(legacy)); err == nil {
+		t.Fatal("legacy module path was accepted")
+	}
+
+	canonical := filepath.Join(root, "generated", "gcp", "modules", "compute")
+	if err := validation.ValidateRequest(newRequest(canonical)); err != nil {
+		t.Fatalf("canonical path rejected: %v", err)
 	}
 }

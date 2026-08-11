@@ -236,7 +236,7 @@ func TestOCINetworkDeleteRejectsCertainOCIComputeDependency(t *testing.T) {
 		t.Fatalf("write Compute main.tf: %v", err)
 	}
 	if err := os.WriteFile(
-		filepath.Join(computePath, "terraform.tfvars"),
+		common.TerraformTfvarsPath(computePath),
 		[]byte("\n"),
 		0o600,
 	); err != nil {
@@ -280,7 +280,7 @@ func TestOCINetworkDeleteToleratesMissingDeclarations(t *testing.T) {
 		t.Fatalf("write variables.tf: %v", err)
 	}
 
-	tfvarsPath := filepath.Join(modulePath, "terraform.tfvars")
+	tfvarsPath := common.TerraformTfvarsPath(modulePath)
 	tfvars, err := common.LoadExistingFile(tfvarsPath)
 	if err != nil {
 		t.Fatalf("load terraform.tfvars: %v", err)
@@ -309,9 +309,9 @@ func TestOCINetworkDeleteToleratesMissingDeclarations(t *testing.T) {
 
 func TestOCINetworkDeleteIsolatedAndAvoidsUncertainOCIDMatch(t *testing.T) {
 	root := t.TempDir()
-	gcpPath := filepath.Join(root, "generated", "gcp", "network")
-	ociComputePath := filepath.Join(root, "generated", "oci", "compute")
-	ociNetworkPath := filepath.Join(root, "generated", "oci", "network")
+	gcpPath := filepath.Join(root, "generated", "gcp", "modules", "network")
+	ociComputePath := filepath.Join(root, "generated", "oci", "modules", "compute")
+	ociNetworkPath := filepath.Join(root, "generated", "oci", "modules", "network")
 
 	seedRequests := []*models.Request{
 		testutil.NetworkRequest(
@@ -350,7 +350,7 @@ func TestOCINetworkDeleteIsolatedAndAvoidsUncertainOCIDMatch(t *testing.T) {
 		gcpBefore,
 		testutil.SnapshotTerraformFiles(t, gcpPath),
 	)
-	testutil.AssertTerraformFilesEqual(
+	testutil.AssertModuleFilesEqual(
 		t,
 		ociComputeBefore,
 		testutil.SnapshotTerraformFiles(t, ociComputePath),
@@ -363,6 +363,7 @@ func createTwoOCINetworks(t testing.TB) string {
 		t.TempDir(),
 		"generated",
 		"oci",
+		"modules",
 		"network",
 	)
 	createNetworkPairAtPath(t, modulePath)

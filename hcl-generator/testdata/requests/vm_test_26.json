@@ -1,0 +1,14 @@
+{
+  "action": "create",
+  "provider": "gcp",
+  "module": "compute",
+  "module_path": "generated/gcp/modules/compute",
+  "resource": {
+    "resource_name": "vm_test_26",
+    "name": "vm-test-26",
+    "machine_type": "e2-medium",
+    "zone": "europe-west1-b",
+    "image": "debian-cloud/debian-12",
+    "network": "default"
+  }
+}

@@ -17,7 +17,7 @@ import (
 )
 
 func TestIAMDeleteRemovesOnlyTargetIdentity(t *testing.T) {
-	modulePath := filepath.Join(t.TempDir(), "generated", "gcp", "iam")
+	modulePath := filepath.Join(t.TempDir(), "generated", "gcp", "modules", "iam")
 	for _, request := range []*models.Request{
 		iamRequest(
 			modulePath,
@@ -60,7 +60,7 @@ func TestIAMDeleteRemovesOnlyTargetIdentity(t *testing.T) {
 }
 
 func TestIAMDeleteMissingResourcesDoNotModifyFiles(t *testing.T) {
-	modulePath := filepath.Join(t.TempDir(), "generated", "gcp", "iam")
+	modulePath := filepath.Join(t.TempDir(), "generated", "gcp", "modules", "iam")
 	create := iamRequest(
 		modulePath,
 		"sa_delete_test_01",
@@ -116,7 +116,7 @@ func TestIAMDeleteMissingResourcesDoNotModifyFiles(t *testing.T) {
 }
 
 func TestIAMDeleteRejectsMismatchedBinding(t *testing.T) {
-	modulePath := filepath.Join(t.TempDir(), "generated", "gcp", "iam")
+	modulePath := filepath.Join(t.TempDir(), "generated", "gcp", "modules", "iam")
 	for _, name := range []string{"sa_delete_a_01", "sa_delete_b_01"} {
 		create := iamRequest(
 			modulePath,
@@ -159,7 +159,7 @@ func TestIAMDeleteRejectsMismatchedBinding(t *testing.T) {
 }
 
 func TestIAMDeleteBlocksInternalDependency(t *testing.T) {
-	modulePath := filepath.Join(t.TempDir(), "generated", "gcp", "iam")
+	modulePath := filepath.Join(t.TempDir(), "generated", "gcp", "modules", "iam")
 	create := iamRequest(
 		modulePath,
 		"sa_delete_test_01",
@@ -238,7 +238,7 @@ func TestIAMDeleteBlocksCertainCrossModuleDependencies(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			root := t.TempDir()
-			modulePath := filepath.Join(root, "generated", "gcp", "iam")
+			modulePath := filepath.Join(root, "generated", "gcp", "modules", "iam")
 			create := iamRequest(
 				modulePath,
 				"sa_delete_test_01",
@@ -251,7 +251,7 @@ func TestIAMDeleteBlocksCertainCrossModuleDependencies(t *testing.T) {
 				t.Fatalf("IAM Create failed: %v", err)
 			}
 
-			computePath := filepath.Join(root, "generated", "gcp", "compute")
+			computePath := filepath.Join(root, "generated", "gcp", "modules", "compute")
 			if err := os.MkdirAll(computePath, 0o755); err != nil {
 				t.Fatalf("create compute fixture: %v", err)
 			}
@@ -319,7 +319,7 @@ func writeIAMFixtureFile(
 ) {
 	t.Helper()
 	if err := os.WriteFile(
-		filepath.Join(modulePath, filename),
+		testutil.TerraformFilePath(modulePath, filename),
 		common.FormattedBytes(file),
 		0o644,
 	); err != nil {

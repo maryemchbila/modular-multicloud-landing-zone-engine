@@ -3,7 +3,6 @@ package compute_test
 import (
 	"bytes"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -13,7 +12,7 @@ import (
 )
 
 func TestOCIComputeUpdateFinalValuesAndStableFiles(t *testing.T) {
-	modulePath := t.TempDir()
+	modulePath := testutil.CanonicalModulePath(t, "oci", "compute")
 	create := testutil.OCIComputeRequest(
 		modulePath,
 		"oci_vm_test_01",
@@ -106,7 +105,7 @@ func TestOCIComputeUpdateFinalValuesAndStableFiles(t *testing.T) {
 }
 
 func TestOCIComputeUpdateMissingResourceDoesNotModifyFiles(t *testing.T) {
-	modulePath := t.TempDir()
+	modulePath := testutil.CanonicalModulePath(t, "oci", "compute")
 	create := testutil.OCIComputeRequest(
 		modulePath,
 		"oci_vm_test_01",
@@ -162,7 +161,7 @@ func TestOCIComputeUpdateRequiresExistingVariablesAndTfvars(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			modulePath := t.TempDir()
+			modulePath := testutil.CanonicalModulePath(t, "oci", "compute")
 			create := testutil.OCIComputeRequest(
 				modulePath,
 				"oci_vm_test_01",
@@ -209,7 +208,7 @@ func removeTerraformElement(
 	name string,
 ) {
 	t.Helper()
-	path := filepath.Join(modulePath, filename)
+	path := testutil.TerraformFilePath(modulePath, filename)
 	file, err := common.LoadExistingFile(path)
 	if err != nil {
 		t.Fatalf("load %s: %v", filename, err)

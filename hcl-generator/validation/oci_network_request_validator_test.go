@@ -109,10 +109,11 @@ func TestValidateOCINetworkRejectsInvalidIdentifiersAndPath(t *testing.T) {
 		t.TempDir(),
 		"generated",
 		"oci",
+		"modules",
 		"compute",
 	)
 	err = ValidateRequest(request)
-	if err == nil || !strings.Contains(err.Error(), "generated/oci/network") {
+	if err == nil || !strings.Contains(err.Error(), "generated/oci/modules/network") {
 		t.Fatalf("unexpected path validation error: %v", err)
 	}
 }
@@ -183,6 +184,7 @@ func validOCINetworkRequest(t *testing.T) *models.Request {
 			t.TempDir(),
 			"generated",
 			"oci",
+			"modules",
 			"network",
 		),
 		OCINetworkResource: &models.OCINetworkRequest{

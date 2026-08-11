@@ -61,10 +61,11 @@ func TestValidateIAMRejectsWrongPath(t *testing.T) {
 		t.TempDir(),
 		"generated",
 		"gcp",
+		"modules",
 		"compute",
 	)
 	err := ValidateRequest(request)
-	if err == nil || !strings.Contains(err.Error(), "generated/gcp/iam") {
+	if err == nil || !strings.Contains(err.Error(), "generated/gcp/modules/iam") {
 		t.Fatalf("wrong IAM path returned unexpected error: %v", err)
 	}
 }
@@ -75,7 +76,7 @@ func validIAMRequest(t *testing.T) *models.Request {
 		Action:     "create",
 		Provider:   "gcp",
 		Module:     "iam",
-		ModulePath: filepath.Join(t.TempDir(), "generated", "gcp", "iam"),
+		ModulePath: filepath.Join(t.TempDir(), "generated", "gcp", "modules", "iam"),
 		IAMResource: &models.IAMRequest{
 			ResourceName: "sa_logging_01",
 			AccountID:    "sa-logging-01",

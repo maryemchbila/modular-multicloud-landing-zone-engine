@@ -10,7 +10,7 @@ import (
 )
 
 func TestCreateNetwork(t *testing.T) {
-	modulePath := t.TempDir()
+	modulePath := testutil.CanonicalModulePath(t, "gcp", "network")
 	request := testutil.NetworkRequest(
 		"create",
 		modulePath,

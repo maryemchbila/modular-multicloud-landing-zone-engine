@@ -71,11 +71,10 @@ type ModuleLayout struct {
 	ProviderRoot string
 	ModulesRoot  string
 	ModulePath   string
-	Legacy       bool
 }
 
-// ResolveModulePath reconnait les deux conventions autorisees :
-// generated/<provider>/<module> et generated/<provider>/modules/<module>.
+// ResolveModulePath reconnait uniquement le chemin de production canonique :
+// generated/<provider>/modules/<module>.
 func ResolveModulePath(modulePath, provider, moduleName string) (ModuleLayout, error) {
 	cleaned := filepath.Clean(modulePath)
 	if filepath.Base(cleaned) != moduleName {
@@ -83,16 +82,6 @@ func ResolveModulePath(modulePath, provider, moduleName string) (ModuleLayout, e
 	}
 
 	parent := filepath.Dir(cleaned)
-	if filepath.Base(parent) == provider &&
-		filepath.Base(filepath.Dir(parent)) == "generated" {
-		return ModuleLayout{
-			ProviderRoot: parent,
-			ModulesRoot:  filepath.Join(parent, "modules"),
-			ModulePath:   cleaned,
-			Legacy:       true,
-		}, nil
-	}
-
 	if filepath.Base(parent) == "modules" {
 		providerRoot := filepath.Dir(parent)
 		if filepath.Base(providerRoot) == provider &&
@@ -101,7 +90,6 @@ func ResolveModulePath(modulePath, provider, moduleName string) (ModuleLayout, e
 				ProviderRoot: providerRoot,
 				ModulesRoot:  parent,
 				ModulePath:   cleaned,
-				Legacy:       false,
 			}, nil
 		}
 	}
@@ -110,9 +98,7 @@ func ResolveModulePath(modulePath, provider, moduleName string) (ModuleLayout, e
 
 func invalidModulePath(path, provider, moduleName string) error {
 	return fmt.Errorf(
-		"module_path %s/%s doit cibler generated/%s/%s ou generated/%s/modules/%s : %s",
-		provider,
-		moduleName,
+		"module_path %s/%s doit cibler generated/%s/modules/%s : %s",
 		provider,
 		moduleName,
 		provider,
