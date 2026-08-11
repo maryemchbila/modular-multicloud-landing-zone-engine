@@ -13,3 +13,13 @@ output "vm_inexistante_999_id" {
 output "vm_inexistante_999_name" {
   value = google_compute_instance.vm_inexistante_999.name
 }
+
+output "vm_test_26_id" {
+  value = google_compute_instance.vm_test_26.id
+}
+
+
+output "vm_test_26_name" {
+  value = google_compute_instance.vm_test_26.name
+}
+
