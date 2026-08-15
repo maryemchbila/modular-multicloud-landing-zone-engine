@@ -16,6 +16,7 @@ class ComputeUpdateTests(unittest.TestCase):
     def test_builder_creates_complete_update_request(self) -> None:
         answers = iter(
             [
+                "stage2026-test-project",
                 "vm_clean_test_01",
                 "vm-clean-prod-01",
                 "e2-standard-4",
@@ -29,6 +30,7 @@ class ComputeUpdateTests(unittest.TestCase):
 
         self.assertIsInstance(request, UpdateVMRequest)
         self.assertEqual(request.action, "update")
+        self.assertEqual(request.project_id, "stage2026-test-project")
         self.assertEqual(request.resource.resource_name, "vm_clean_test_01")
         self.assertEqual(request.resource.name, "vm-clean-prod-01")
         validate_request(request)
@@ -36,6 +38,7 @@ class ComputeUpdateTests(unittest.TestCase):
     def test_update_requires_valid_resource_name(self) -> None:
         request = UpdateVMRequest(
             module_path=str(GCP_COMPUTE_OUTPUT.resolve()),
+            project_id="stage2026-test-project",
             resource=VMResource(
                 resource_name="",
                 name="vm-clean-prod-01",

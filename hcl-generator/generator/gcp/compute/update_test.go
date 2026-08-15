@@ -96,6 +96,52 @@ func TestComputeUpdateExistingResource(t *testing.T) {
 	}
 }
 
+func TestComputeUpdateWritesReplacesAndPreservesRootProjectID(t *testing.T) {
+	modulePath := testutil.CanonicalModulePath(t, "gcp", "compute")
+	writeLegacyComputeFixture(t, modulePath)
+
+	request := testutil.ComputeRequest(
+		"update",
+		modulePath,
+		"vm_clean_test_01",
+		"vm-clean-test-01",
+		"e2-standard-2",
+	)
+	request.ProjectID = "stage2026-multicloud-01"
+
+	if err := generator.GenerateAtomically(request); err != nil {
+		t.Fatalf("Compute Update failed: %v", err)
+	}
+
+	firstTfvars := testutil.SnapshotTerraformFiles(t, modulePath)["terraform.tfvars"]
+	assertTfvarsStringValue(
+		t,
+		firstTfvars,
+		"gcp_project_id",
+		"stage2026-multicloud-01",
+	)
+	assertTfvarsStringValue(t, firstTfvars, "existing_setting", "preserve-me")
+	assertTfvarsKeyCount(t, string(firstTfvars), "gcp_project_id", 1)
+
+	request.ProjectID = "stage2026-multicloud-02"
+	if err := generator.GenerateAtomically(request); err != nil {
+		t.Fatalf("second Compute Update failed: %v", err)
+	}
+
+	secondTfvars := testutil.SnapshotTerraformFiles(t, modulePath)["terraform.tfvars"]
+	assertTfvarsStringValue(
+		t,
+		secondTfvars,
+		"gcp_project_id",
+		"stage2026-multicloud-02",
+	)
+	assertTfvarsStringValue(t, secondTfvars, "existing_setting", "preserve-me")
+	assertTfvarsKeyCount(t, string(secondTfvars), "gcp_project_id", 1)
+	if strings.Contains(string(secondTfvars), "stage2026-multicloud-01") {
+		t.Fatal("old gcp_project_id value remains after Update")
+	}
+}
+
 func TestComputeUpdateMissingResourceDoesNotModifyFiles(t *testing.T) {
 	modulePath := testutil.CanonicalModulePath(t, "gcp", "compute")
 	writeLegacyComputeFixture(t, modulePath)
@@ -225,6 +271,8 @@ variable "network" {
 }
 `,
 		"terraform.tfvars": `
+gcp_project_id = "stage2026-old-project"
+existing_setting = "preserve-me"
 name         = "vm-other-01"
 machine_type = "e2-medium"
 zone         = "europe-west1-b"

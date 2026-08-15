@@ -70,6 +70,10 @@ def _ask(label: str, default: str, input_fn: InputFunction) -> str:
     return value or default
 
 
+def _ask_required(label: str, input_fn: InputFunction) -> str:
+    return input_fn(f"{label} : ").strip()
+
+
 def _ask_bool(label: str, default: bool, input_fn: InputFunction) -> bool:
     default_text = "true" if default else "false"
     value = input_fn(f"{label} [{default_text}] : ").strip().lower()
@@ -88,6 +92,7 @@ def build_request(input_fn: InputFunction = input) -> CreateVMRequest:
     default_module_path = str(GCP_COMPUTE_OUTPUT.resolve())
 
     print("\nParametres de la VM GCP (Entree conserve la valeur proposee)\n")
+    project_id = _ask_required("Identifiant du projet GCP", input_fn)
     resource = VMResource(
         resource_name=_ask("Identifiant Terraform", "vm_web_01", input_fn),
         name=_ask("Nom de la VM GCP", "vm-web-01", input_fn),
@@ -97,7 +102,11 @@ def build_request(input_fn: InputFunction = input) -> CreateVMRequest:
         network=_ask("Reseau", "default", input_fn),
     )
     module_path = _ask("Dossier Terraform cible", default_module_path, input_fn)
-    return CreateVMRequest(module_path=module_path, resource=resource)
+    return CreateVMRequest(
+        module_path=module_path,
+        resource=resource,
+        project_id=project_id,
+    )
 
 
 def ask_oci_compute_parameters(
@@ -777,6 +786,7 @@ def ask_gcp_compute_update_parameters(
     default_module_path = str(GCP_COMPUTE_OUTPUT.resolve())
 
     print("\nNouvelles valeurs finales de la VM GCP\n")
+    project_id = _ask_required("Identifiant du projet GCP", input_fn)
     resource = VMResource(
         resource_name=_ask(
             "Nom logique Terraform de la VM existante",
@@ -790,7 +800,11 @@ def ask_gcp_compute_update_parameters(
         network=_ask("Network", "default", input_fn),
     )
     module_path = _ask("Dossier Terraform cible", default_module_path, input_fn)
-    return UpdateVMRequest(module_path=module_path, resource=resource)
+    return UpdateVMRequest(
+        module_path=module_path,
+        resource=resource,
+        project_id=project_id,
+    )
 
 
 def ask_gcp_compute_delete_parameters(

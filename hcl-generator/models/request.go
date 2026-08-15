@@ -11,6 +11,7 @@ type Request struct {
 	Provider           string             `json:"provider"`
 	Module             string             `json:"module"`
 	ModulePath         string             `json:"module_path"`
+	ProjectID          string             `json:"project_id"`
 	ComputeResource    *ComputeRequest    `json:"-"`
 	NetworkResource    *NetworkRequest    `json:"-"`
 	StorageResource    *StorageRequest    `json:"-"`

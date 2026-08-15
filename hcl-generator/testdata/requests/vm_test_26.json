@@ -3,6 +3,7 @@
   "provider": "gcp",
   "module": "compute",
   "module_path": "generated/gcp/modules/compute",
+  "project_id": "stage2026-test-project",
   "resource": {
     "resource_name": "vm_test_26",
     "name": "vm-test-26",
