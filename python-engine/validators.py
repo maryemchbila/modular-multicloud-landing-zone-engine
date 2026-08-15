@@ -572,6 +572,7 @@ def validate_request(
     elif isinstance(request, (CreateVMRequest, UpdateVMRequest)):
         if request.module != "compute":
             errors.append("module doit valoir 'compute'")
+        fields["project_id"] = request.project_id
         fields.update(
             {
                 "resource.resource_name": request.resource.resource_name,

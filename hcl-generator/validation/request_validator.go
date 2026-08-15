@@ -69,6 +69,14 @@ func ValidateRequest(request *models.Request) error {
 }
 
 func validateGCPRequest(request *models.Request) error {
+	if request.Module == "compute" &&
+		(request.Action == "create" || request.Action == "update") {
+		request.ProjectID = strings.TrimSpace(request.ProjectID)
+		if request.ProjectID == "" {
+			return fmt.Errorf("champ obligatoire manquant : project_id")
+		}
+	}
+
 	if request.Action == "update" &&
 		request.Module != "compute" &&
 		request.Module != "iam" &&

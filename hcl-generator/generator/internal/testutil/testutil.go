@@ -87,6 +87,7 @@ func ComputeRequest(
 		Provider:   "gcp",
 		Module:     "compute",
 		ModulePath: modulePath,
+		ProjectID:  "stage2026-test-project",
 		ComputeResource: &models.ComputeRequest{
 			ResourceName: resourceName,
 			Name:         name,

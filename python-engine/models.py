@@ -18,6 +18,7 @@ class VMResource:
 class CreateVMRequest:
     module_path: str
     resource: VMResource
+    project_id: str
     action: str = "create"
     provider: str = "gcp"
     module: str = "compute"
@@ -29,6 +30,7 @@ class CreateVMRequest:
             "provider": self.provider,
             "module": self.module,
             "module_path": self.module_path,
+            "project_id": self.project_id,
             "resource": asdict(self.resource),
         }
 
@@ -424,6 +426,7 @@ class DeleteOCIComputeRequest:
 class UpdateVMRequest:
     module_path: str
     resource: VMResource
+    project_id: str
     action: str = "update"
     provider: str = "gcp"
     module: str = "compute"
@@ -435,6 +438,7 @@ class UpdateVMRequest:
             "provider": self.provider,
             "module": self.module,
             "module_path": self.module_path,
+            "project_id": self.project_id,
             "resource": asdict(self.resource),
         }
 
