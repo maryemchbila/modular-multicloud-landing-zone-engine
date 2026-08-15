@@ -1,5 +1,15 @@
 module "compute" {
   source                  = "./modules/compute"
+  vm_e2_01_image          = var.vm_e2_01_image
+  vm_e2_01_machine_type   = var.vm_e2_01_machine_type
+  vm_e2_01_name           = var.vm_e2_01_name
+  vm_e2_01_network        = var.vm_e2_01_network
+  vm_e2_01_zone           = var.vm_e2_01_zone
+  vm_e2e_01_image         = var.vm_e2e_01_image
+  vm_e2e_01_machine_type  = var.vm_e2e_01_machine_type
+  vm_e2e_01_name          = var.vm_e2e_01_name
+  vm_e2e_01_network       = var.vm_e2e_01_network
+  vm_e2e_01_zone          = var.vm_e2e_01_zone
   vm_test_26_image        = var.vm_test_26_image
   vm_test_26_machine_type = var.vm_test_26_machine_type
   vm_test_26_name         = var.vm_test_26_name

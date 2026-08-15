@@ -8,6 +8,26 @@ output "vm_test_26_name" {
 }
 
 
+output "vm_e2e_01_id" {
+  value = module.compute.vm_e2e_01_id
+}
+
+
+output "vm_e2e_01_name" {
+  value = module.compute.vm_e2e_01_name
+}
+
+
+output "vm_e2_01_id" {
+  value = module.compute.vm_e2_01_id
+}
+
+
+output "vm_e2_01_name" {
+  value = module.compute.vm_e2_01_name
+}
+
+
 output "vpc_backend_01_id" {
   value = module.network.vpc_backend_01_id
 }
