@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import app
-from models import DeleteStorageRequest, StorageDeleteResource
+from models import DeleteStorageRequest, GCPContext, StorageDeleteResource
 from request_builder import (
     GCP_STORAGE_OUTPUT,
     ask_gcp_storage_delete_parameters,
@@ -18,7 +18,8 @@ from validators import ValidationError, validate_request
 class StorageDeleteTests(unittest.TestCase):
     def test_builder_creates_minimal_delete_request(self) -> None:
         request = ask_gcp_storage_delete_parameters(
-            lambda _: "bucket_delete_test_01"
+            lambda _: "bucket_delete_test_01",
+            gcp_context=GCPContext("example-test-project"),
         )
 
         self.assertIsInstance(request, DeleteStorageRequest)
@@ -87,6 +88,7 @@ class StorageDeleteTests(unittest.TestCase):
     ) -> None:
         ask_mock.return_value = DeleteStorageRequest(
             module_path=str(GCP_STORAGE_OUTPUT.resolve()),
+            project_id="example-test-project",
             resource=StorageDeleteResource(resource_name="invalid bucket"),
         )
 
@@ -103,6 +105,7 @@ class StorageDeleteTests(unittest.TestCase):
     def _valid_request() -> DeleteStorageRequest:
         return DeleteStorageRequest(
             module_path=str(GCP_STORAGE_OUTPUT.resolve()),
+            project_id="example-test-project",
             resource=StorageDeleteResource(
                 resource_name="bucket_delete_test_01"
             ),

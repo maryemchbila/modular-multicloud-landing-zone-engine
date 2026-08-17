@@ -11,7 +11,7 @@ import (
 
 const (
 	TerraformConstraint = ">= 1.5.7"
-	ProviderConstraint  = "~> 8.0"
+	ProviderConstraint  = "= 8.23.0"
 )
 
 func EnsureOCIRootConfiguration(modulePath string) error {

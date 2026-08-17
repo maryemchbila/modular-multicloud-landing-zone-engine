@@ -8,7 +8,9 @@ from pathlib import Path
 
 from app_governance import run_governance_after_generation
 from go_client import GoClientError, run_generator
+from models import GCPContext
 from request_builder import (
+    ask_gcp_context,
     ask_gcp_compute_delete_parameters,
     ask_gcp_compute_update_parameters,
     ask_gcp_iam_parameters,
@@ -103,8 +105,8 @@ def _generate(payload: dict) -> bool:
     return True
 
 
-def create_gcp_compute() -> bool:
-    request = build_request()
+def create_gcp_compute(*, gcp_context: GCPContext | None = None) -> bool:
+    request = build_request(gcp_context=gcp_context)
     validate_request(request)
     return _generate(request.to_dict())
 
@@ -320,20 +322,27 @@ def delete_oci_compute(input_fn=input) -> bool:
     return True
 
 
-def create_gcp_network() -> bool:
-    request = ask_gcp_network_parameters()
+def create_gcp_network(*, gcp_context: GCPContext | None = None) -> bool:
+    request = ask_gcp_network_parameters(gcp_context=gcp_context)
     validate_request(request)
     return _generate(request.to_dict())
 
 
-def update_gcp_compute() -> bool:
-    request = ask_gcp_compute_update_parameters()
+def update_gcp_compute(*, gcp_context: GCPContext | None = None) -> bool:
+    request = ask_gcp_compute_update_parameters(gcp_context=gcp_context)
     validate_request(request)
     return _generate(request.to_dict())
 
 
-def delete_gcp_compute(input_fn=input) -> bool:
-    request = ask_gcp_compute_delete_parameters(input_fn)
+def delete_gcp_compute(
+    input_fn=input,
+    *,
+    gcp_context: GCPContext | None = None,
+) -> bool:
+    request = ask_gcp_compute_delete_parameters(
+        input_fn,
+        gcp_context=gcp_context,
+    )
     validate_request(request)
 
     resource_name = request.resource.resource_name
@@ -347,14 +356,21 @@ def delete_gcp_compute(input_fn=input) -> bool:
     return _generate(request.to_dict())
 
 
-def update_gcp_network() -> bool:
-    request = ask_gcp_network_update_parameters()
+def update_gcp_network(*, gcp_context: GCPContext | None = None) -> bool:
+    request = ask_gcp_network_update_parameters(gcp_context=gcp_context)
     validate_request(request)
     return _generate(request.to_dict())
 
 
-def delete_gcp_network(input_fn=input) -> bool:
-    request = ask_gcp_network_delete_parameters(input_fn)
+def delete_gcp_network(
+    input_fn=input,
+    *,
+    gcp_context: GCPContext | None = None,
+) -> bool:
+    request = ask_gcp_network_delete_parameters(
+        input_fn,
+        gcp_context=gcp_context,
+    )
     validate_request(request)
 
     resource = request.resource
@@ -373,26 +389,33 @@ def delete_gcp_network(input_fn=input) -> bool:
     return _generate(request.to_dict())
 
 
-def create_gcp_storage() -> bool:
-    request = ask_gcp_storage_parameters()
+def create_gcp_storage(*, gcp_context: GCPContext | None = None) -> bool:
+    request = ask_gcp_storage_parameters(gcp_context=gcp_context)
     validate_request(request)
     return _generate(request.to_dict())
 
 
-def create_gcp_iam() -> bool:
-    request = ask_gcp_iam_parameters()
+def create_gcp_iam(*, gcp_context: GCPContext | None = None) -> bool:
+    request = ask_gcp_iam_parameters(gcp_context=gcp_context)
     validate_request(request)
     return _generate(request.to_dict())
 
 
-def update_gcp_iam() -> bool:
-    request = ask_gcp_iam_update_parameters()
+def update_gcp_iam(*, gcp_context: GCPContext | None = None) -> bool:
+    request = ask_gcp_iam_update_parameters(gcp_context=gcp_context)
     validate_request(request)
     return _generate(request.to_dict())
 
 
-def delete_gcp_iam(input_fn=input) -> bool:
-    request = ask_gcp_iam_delete_parameters(input_fn)
+def delete_gcp_iam(
+    input_fn=input,
+    *,
+    gcp_context: GCPContext | None = None,
+) -> bool:
+    request = ask_gcp_iam_delete_parameters(
+        input_fn,
+        gcp_context=gcp_context,
+    )
     validate_request(request)
 
     resource_name = request.resource.resource_name
@@ -410,14 +433,21 @@ def delete_gcp_iam(input_fn=input) -> bool:
     return True
 
 
-def update_gcp_storage() -> bool:
-    request = ask_gcp_storage_update_parameters()
+def update_gcp_storage(*, gcp_context: GCPContext | None = None) -> bool:
+    request = ask_gcp_storage_update_parameters(gcp_context=gcp_context)
     validate_request(request)
     return _generate(request.to_dict())
 
 
-def delete_gcp_storage(input_fn=input) -> bool:
-    request = ask_gcp_storage_delete_parameters(input_fn)
+def delete_gcp_storage(
+    input_fn=input,
+    *,
+    gcp_context: GCPContext | None = None,
+) -> bool:
+    request = ask_gcp_storage_delete_parameters(
+        input_fn,
+        gcp_context=gcp_context,
+    )
     validate_request(request)
 
     resource_name = request.resource.resource_name
@@ -434,8 +464,14 @@ def delete_gcp_storage(input_fn=input) -> bool:
     return True
 
 
-def dispatch(provider: str, module: str, action: str) -> bool:
-    handlers: dict[tuple[str, str, str], Callable[[], bool]] = {
+def dispatch(
+    provider: str,
+    module: str,
+    action: str,
+    *,
+    gcp_context: GCPContext | None = None,
+) -> bool:
+    handlers: dict[tuple[str, str, str], Callable[..., bool]] = {
         ("oci", "compute", "create"): create_oci_compute,
         ("oci", "compute", "update"): update_oci_compute,
         ("oci", "compute", "delete"): delete_oci_compute,
@@ -463,6 +499,8 @@ def dispatch(provider: str, module: str, action: str) -> bool:
     }
     handler = handlers.get((provider, module, action))
     if handler is not None:
+        if provider == "gcp" and gcp_context is not None:
+            return handler(gcp_context=gcp_context)
         return handler()
     print(f"Fonctionnalité non encore implémentée : {provider} / {module} / {action}")
     return False
@@ -474,9 +512,18 @@ def main() -> int:
         print(" Multi-Cloud Automation Engine")
         print("===============================\n")
         provider = choose_provider()
+        gcp_context = None
+        if provider == "gcp":
+            gcp_context = ask_gcp_context()
+            print(f"\nProjet GCP cible : {gcp_context.project_id}")
         module = choose_module()
         action = choose_action()
-        generation_succeeded = dispatch(provider, module, action)
+        generation_succeeded = dispatch(
+            provider,
+            module,
+            action,
+            gcp_context=gcp_context,
+        )
         if generation_succeeded is not True:
             print("\nGeneration : NOT_RUN")
             print("Governance : NOT_RUN")

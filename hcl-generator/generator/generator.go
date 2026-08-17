@@ -18,6 +18,9 @@ import (
 	ocimodule "hcl-generator/generator/oci/rootmodule"
 	ocistorage "hcl-generator/generator/oci/storage"
 	"hcl-generator/models"
+
+	"github.com/hashicorp/hcl/v2/hclwrite"
+	"github.com/zclconf/go-cty/cty"
 )
 
 type actionHandler func(*common.TerraformFiles, *models.Request) error
@@ -99,6 +102,9 @@ func GenerateAtomically(
 	if err != nil {
 		return err
 	}
+	if request.Provider == "gcp" {
+		writeGCPProjectContext(files.Tfvars, request.ProjectID)
+	}
 
 	if err := handler(files, request); err != nil {
 		return err
@@ -156,4 +162,11 @@ func GenerateAtomically(
 		)
 	}
 	return common.CommitFilePathsAtomically(modulePrepared)
+}
+
+func writeGCPProjectContext(file *hclwrite.File, projectID string) {
+	file.Body().SetAttributeValue(
+		"gcp_project_id",
+		cty.StringVal(projectID),
+	)
 }

@@ -14,13 +14,6 @@ func addTfvars(
 	body := file.Body()
 	resource := request.ComputeResource
 
-	if request.ProjectID != "" {
-		body.SetAttributeValue(
-			"gcp_project_id",
-			cty.StringVal(request.ProjectID),
-		)
-	}
-
 	body.SetAttributeValue(
 		resource.ResourceName+"_name",
 		cty.StringVal(resource.Name),

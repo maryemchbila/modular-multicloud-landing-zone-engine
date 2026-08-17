@@ -107,7 +107,7 @@ func TestComputeUpdateWritesReplacesAndPreservesRootProjectID(t *testing.T) {
 		"vm-clean-test-01",
 		"e2-standard-2",
 	)
-	request.ProjectID = "stage2026-multicloud-01"
+	request.ProjectID = "runtime-project-id"
 
 	if err := generator.GenerateAtomically(request); err != nil {
 		t.Fatalf("Compute Update failed: %v", err)
@@ -118,12 +118,12 @@ func TestComputeUpdateWritesReplacesAndPreservesRootProjectID(t *testing.T) {
 		t,
 		firstTfvars,
 		"gcp_project_id",
-		"stage2026-multicloud-01",
+		"runtime-project-id",
 	)
 	assertTfvarsStringValue(t, firstTfvars, "existing_setting", "preserve-me")
 	assertTfvarsKeyCount(t, string(firstTfvars), "gcp_project_id", 1)
 
-	request.ProjectID = "stage2026-multicloud-02"
+	request.ProjectID = "project-b"
 	if err := generator.GenerateAtomically(request); err != nil {
 		t.Fatalf("second Compute Update failed: %v", err)
 	}
@@ -133,11 +133,11 @@ func TestComputeUpdateWritesReplacesAndPreservesRootProjectID(t *testing.T) {
 		t,
 		secondTfvars,
 		"gcp_project_id",
-		"stage2026-multicloud-02",
+		"project-b",
 	)
 	assertTfvarsStringValue(t, secondTfvars, "existing_setting", "preserve-me")
 	assertTfvarsKeyCount(t, string(secondTfvars), "gcp_project_id", 1)
-	if strings.Contains(string(secondTfvars), "stage2026-multicloud-01") {
+	if strings.Contains(string(secondTfvars), "runtime-project-id") {
 		t.Fatal("old gcp_project_id value remains after Update")
 	}
 }
@@ -271,7 +271,7 @@ variable "network" {
 }
 `,
 		"terraform.tfvars": `
-gcp_project_id = "stage2026-old-project"
+gcp_project_id = "project-a"
 existing_setting = "preserve-me"
 name         = "vm-other-01"
 machine_type = "e2-medium"

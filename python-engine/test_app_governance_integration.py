@@ -12,6 +12,7 @@ from unittest.mock import Mock, patch
 import app
 import app_governance
 from go_client import GoClientError
+from models import GCPContext
 
 
 def _status(value: str) -> SimpleNamespace:
@@ -92,6 +93,9 @@ class AppGovernanceIntegrationTests(unittest.TestCase):
         for cloud in ("gcp", "oci"):
             with self.subTest(cloud=cloud), patch(
                 "app.choose_provider", return_value=cloud
+            ), patch(
+                "app.ask_gcp_context",
+                return_value=GCPContext("example-test-project"),
             ), patch("app.choose_module", return_value="compute"), patch(
                 "app.choose_action", return_value="create"
             ), patch("app.dispatch", return_value=True) as dispatch_mock, patch(
@@ -102,12 +106,20 @@ class AppGovernanceIntegrationTests(unittest.TestCase):
                     cloud,
                     "compute",
                     "create",
+                    gcp_context=(
+                        GCPContext("example-test-project")
+                        if cloud == "gcp"
+                        else None
+                    ),
                 )
                 governance_mock.assert_called_once_with(cloud)
 
     def test_generation_failure_never_calls_governance(self) -> None:
         stderr = io.StringIO()
         with patch("app.choose_provider", return_value="gcp"), patch(
+            "app.ask_gcp_context",
+            return_value=GCPContext("example-test-project"),
+        ), patch(
             "app.choose_module", return_value="compute"
         ), patch("app.choose_action", return_value="create"), patch(
             "app.dispatch",

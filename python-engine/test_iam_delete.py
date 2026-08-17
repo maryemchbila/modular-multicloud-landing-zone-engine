@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import app
-from models import DeleteIAMRequest, IAMDeleteResource
+from models import DeleteIAMRequest, GCPContext, IAMDeleteResource
 from request_builder import GCP_IAM_OUTPUT, ask_gcp_iam_delete_parameters
 from validators import ValidationError, validate_request
 
@@ -13,7 +13,8 @@ from validators import ValidationError, validate_request
 class IAMDeleteTests(unittest.TestCase):
     def test_builder_creates_minimal_delete_request(self) -> None:
         request = ask_gcp_iam_delete_parameters(
-            lambda _: "sa_delete_test_01"
+            lambda _: "sa_delete_test_01",
+            gcp_context=GCPContext("example-test-project"),
         )
 
         self.assertIsInstance(request, DeleteIAMRequest)
@@ -79,6 +80,7 @@ class IAMDeleteTests(unittest.TestCase):
         ask_mock.return_value = DeleteIAMRequest(
             module_path=str(GCP_IAM_OUTPUT.resolve()),
             resource=IAMDeleteResource(resource_name="1-invalid"),
+            project_id="example-test-project",
         )
 
         with self.assertRaisesRegex(
@@ -94,6 +96,7 @@ class IAMDeleteTests(unittest.TestCase):
     def _request() -> DeleteIAMRequest:
         return DeleteIAMRequest(
             module_path=str(GCP_IAM_OUTPUT.resolve()),
+            project_id="example-test-project",
             resource=IAMDeleteResource(
                 resource_name="sa_delete_test_01",
             ),

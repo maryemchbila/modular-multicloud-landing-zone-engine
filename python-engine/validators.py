@@ -214,6 +214,8 @@ def validate_request(
     if request.provider != expected_provider:
         errors.append(f"provider doit valoir '{expected_provider}'")
     fields = {"module_path": request.module_path}
+    if expected_provider == "gcp":
+        fields["project_id"] = request.project_id
 
     if isinstance(request, DeleteOCIIAMRequest):
         if request.module != "iam":
@@ -569,10 +571,18 @@ def validate_request(
                 "Rôle IAM trop permissif interdit par la politique de "
                 f"sécurité : {request.resource.role}"
             )
+        if (
+            request.project_id
+            and request.resource.project_id
+            and request.resource.project_id != request.project_id
+        ):
+            errors.append(
+                "resource.project_id doit correspondre au contexte "
+                "GCP project_id"
+            )
     elif isinstance(request, (CreateVMRequest, UpdateVMRequest)):
         if request.module != "compute":
             errors.append("module doit valoir 'compute'")
-        fields["project_id"] = request.project_id
         fields.update(
             {
                 "resource.resource_name": request.resource.resource_name,

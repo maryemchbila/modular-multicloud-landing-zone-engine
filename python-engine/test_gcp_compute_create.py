@@ -3,6 +3,7 @@
 from dataclasses import replace
 import unittest
 
+from models import GCPContext
 from request_builder import GCP_COMPUTE_OUTPUT, build_request
 from validators import ValidationError, validate_request
 
@@ -11,7 +12,6 @@ class GCPComputeCreateContractTests(unittest.TestCase):
     def test_build_request_carries_required_project_id_to_json(self) -> None:
         answers = iter(
             (
-                "stage2026-test-project",
                 "vm_contract_01",
                 "vm-contract-01",
                 "e2-medium",
@@ -22,7 +22,10 @@ class GCPComputeCreateContractTests(unittest.TestCase):
             )
         )
 
-        request = build_request(lambda _prompt: next(answers))
+        request = build_request(
+            lambda _prompt: next(answers),
+            gcp_context=GCPContext("example-test-project"),
+        )
         validate_request(request)
 
         self.assertEqual(
@@ -31,12 +34,15 @@ class GCPComputeCreateContractTests(unittest.TestCase):
         )
         self.assertEqual(
             request.to_dict()["project_id"],
-            "stage2026-test-project",
+            "example-test-project",
         )
 
     def test_create_compute_rejects_missing_project_id(self) -> None:
-        answers = iter(("", "", "", "", "", "", "", ""))
-        request = build_request(lambda _prompt: next(answers))
+        answers = iter(("", "", "", "", "", "", ""))
+        request = build_request(
+            lambda _prompt: next(answers),
+            gcp_context=GCPContext("example-test-project"),
+        )
 
         with self.assertRaisesRegex(
             ValidationError,

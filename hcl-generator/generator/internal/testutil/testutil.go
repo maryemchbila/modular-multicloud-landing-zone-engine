@@ -87,7 +87,7 @@ func ComputeRequest(
 		Provider:   "gcp",
 		Module:     "compute",
 		ModulePath: modulePath,
-		ProjectID:  "stage2026-test-project",
+		ProjectID:  "example-test-project",
 		ComputeResource: &models.ComputeRequest{
 			ResourceName: resourceName,
 			Name:         name,
@@ -108,6 +108,7 @@ func ComputeDeleteRequest(
 		Provider:   "gcp",
 		Module:     "compute",
 		ModulePath: modulePath,
+		ProjectID:  "example-test-project",
 		ComputeResource: &models.ComputeRequest{
 			ResourceName: resourceName,
 		},
@@ -129,6 +130,7 @@ func NetworkRequest(
 		Provider:   "gcp",
 		Module:     "network",
 		ModulePath: modulePath,
+		ProjectID:  "example-test-project",
 		NetworkResource: &models.NetworkRequest{
 			ResourceName:       resourceName,
 			Name:               name,
@@ -150,6 +152,7 @@ func NetworkDeleteRequest(
 		Provider:   "gcp",
 		Module:     "network",
 		ModulePath: modulePath,
+		ProjectID:  "example-test-project",
 		NetworkResource: &models.NetworkRequest{
 			ResourceName:       resourceName,
 			SubnetResourceName: subnetResourceName,
@@ -171,6 +174,7 @@ func StorageRequest(
 		Provider:   "gcp",
 		Module:     "storage",
 		ModulePath: modulePath,
+		ProjectID:  "example-test-project",
 		StorageResource: &models.StorageRequest{
 			ResourceName:             resourceName,
 			Name:                     name,
@@ -190,6 +194,7 @@ func StorageDeleteRequest(
 		Provider:   "gcp",
 		Module:     "storage",
 		ModulePath: modulePath,
+		ProjectID:  "example-test-project",
 		StorageResource: &models.StorageRequest{
 			ResourceName: resourceName,
 		},
