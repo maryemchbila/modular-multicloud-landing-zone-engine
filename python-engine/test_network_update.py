@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch
 
 import app
-from models import NetworkResource, UpdateNetworkRequest
+from models import GCPContext, NetworkResource, UpdateNetworkRequest
 from request_builder import (
     GCP_NETWORK_OUTPUT,
     ask_gcp_network_update_parameters,
@@ -25,7 +25,10 @@ class NetworkUpdateTests(unittest.TestCase):
                 "",
             ]
         )
-        request = ask_gcp_network_update_parameters(lambda _: next(answers))
+        request = ask_gcp_network_update_parameters(
+            lambda _: next(answers),
+            gcp_context=GCPContext("example-test-project"),
+        )
 
         self.assertIsInstance(request, UpdateNetworkRequest)
         self.assertEqual(request.action, "update")
@@ -52,6 +55,7 @@ class NetworkUpdateTests(unittest.TestCase):
     ) -> None:
         ask_mock.return_value = UpdateNetworkRequest(
             module_path=str(GCP_NETWORK_OUTPUT.resolve()),
+            project_id="example-test-project",
             resource=NetworkResource(
                 resource_name="vpc_dev_01",
                 name="vpc-dev-production",
@@ -74,6 +78,7 @@ class NetworkUpdateTests(unittest.TestCase):
     def test_network_identifiers_are_required_and_valid(self) -> None:
         request = UpdateNetworkRequest(
             module_path=str(GCP_NETWORK_OUTPUT.resolve()),
+            project_id="example-test-project",
             resource=NetworkResource(
                 resource_name="",
                 name="vpc-dev-production",

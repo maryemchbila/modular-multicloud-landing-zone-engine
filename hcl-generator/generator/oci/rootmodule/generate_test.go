@@ -95,3 +95,29 @@ func TestEnsureOCIRootModulePreservesExistingChildProviderVersion(t *testing.T) 
 		t.Fatal("existing child provider version was modified")
 	}
 }
+
+func TestEnsureOCIRootModulePinsNewChildProviderTo8230(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "generated", "oci")
+	modulePath := filepath.Join(root, "modules", "storage")
+	if err := os.MkdirAll(modulePath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(modulePath, "main.tf"),
+		[]byte("resource \"oci_objectstorage_bucket\" \"example\" {}\n"),
+		0o600,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := ociroot.EnsureOCIRootModule(root); err != nil {
+		t.Fatal(err)
+	}
+	versions, err := os.ReadFile(filepath.Join(modulePath, "versions.tf"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(versions, []byte(`version = "= 8.23.0"`)) {
+		t.Fatal("new OCI child provider must be pinned to 8.23.0")
+	}
+}

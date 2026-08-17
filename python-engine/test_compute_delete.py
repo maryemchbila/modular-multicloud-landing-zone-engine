@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import app
-from models import ComputeDeleteResource, DeleteVMRequest
+from models import ComputeDeleteResource, DeleteVMRequest, GCPContext
 from request_builder import (
     GCP_COMPUTE_OUTPUT,
     ask_gcp_compute_delete_parameters,
@@ -17,7 +17,10 @@ from validators import ValidationError, validate_request
 
 class ComputeDeleteTests(unittest.TestCase):
     def test_builder_creates_minimal_delete_request(self) -> None:
-        request = ask_gcp_compute_delete_parameters(lambda _: "vm_web_05")
+        request = ask_gcp_compute_delete_parameters(
+            lambda _: "vm_web_05",
+            gcp_context=GCPContext("example-test-project"),
+        )
 
         self.assertIsInstance(request, DeleteVMRequest)
         self.assertEqual(request.action, "delete")
@@ -81,6 +84,7 @@ class ComputeDeleteTests(unittest.TestCase):
         ask_mock.return_value = DeleteVMRequest(
             module_path=str(GCP_COMPUTE_OUTPUT.resolve()),
             resource=ComputeDeleteResource(resource_name="invalid resource"),
+            project_id="example-test-project",
         )
 
         with self.assertRaisesRegex(
@@ -97,6 +101,7 @@ class ComputeDeleteTests(unittest.TestCase):
         return DeleteVMRequest(
             module_path=str(GCP_COMPUTE_OUTPUT.resolve()),
             resource=ComputeDeleteResource(resource_name="vm_delete_test_01"),
+            project_id="example-test-project",
         )
 
 

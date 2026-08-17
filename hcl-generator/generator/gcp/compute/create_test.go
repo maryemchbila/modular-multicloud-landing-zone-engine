@@ -18,7 +18,7 @@ func TestCreateCompute(t *testing.T) {
 		"vm-create-test-01",
 		"e2-medium",
 	)
-	request.ProjectID = "stage2026-multicloud-01"
+	request.ProjectID = "runtime-project-id"
 	if err := generator.GenerateAtomically(request); err != nil {
 		t.Fatalf("Compute Create failed: %v", err)
 	}
@@ -31,7 +31,7 @@ func TestCreateCompute(t *testing.T) {
 		t,
 		beforeDuplicate["terraform.tfvars"],
 		"gcp_project_id",
-		"stage2026-multicloud-01",
+		"runtime-project-id",
 	)
 	assertTfvarsKeyCount(t, tfvarsContent, "gcp_project_id", 1)
 	for _, field := range []string{

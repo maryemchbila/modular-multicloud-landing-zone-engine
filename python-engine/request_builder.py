@@ -21,6 +21,7 @@ from models import (
     DeleteOCIStorageRequest,
     DeleteStorageRequest,
     DeleteVMRequest,
+    GCPContext,
     IAMResource,
     IAMDeleteResource,
     NetworkResource,
@@ -88,11 +89,33 @@ def _ask_bool(label: str, default: bool, input_fn: InputFunction) -> bool:
     )
 
 
-def build_request(input_fn: InputFunction = input) -> CreateVMRequest:
+def ask_gcp_context(input_fn: InputFunction = input) -> GCPContext:
+    project_id = _ask_required("Identifiant du projet GCP", input_fn)
+    if not project_id:
+        raise ValueError("Identifiant du projet GCP obligatoire")
+    return GCPContext(project_id=project_id)
+
+
+def _resolve_gcp_context(
+    context: GCPContext | None,
+    input_fn: InputFunction,
+) -> GCPContext:
+    if context is None:
+        return ask_gcp_context(input_fn)
+    if not isinstance(context, GCPContext):
+        raise TypeError("context doit etre un GCPContext")
+    return context
+
+
+def build_request(
+    input_fn: InputFunction = input,
+    *,
+    gcp_context: GCPContext | None = None,
+) -> CreateVMRequest:
     default_module_path = str(GCP_COMPUTE_OUTPUT.resolve())
 
     print("\nParametres de la VM GCP (Entree conserve la valeur proposee)\n")
-    project_id = _ask_required("Identifiant du projet GCP", input_fn)
+    context = _resolve_gcp_context(gcp_context, input_fn)
     resource = VMResource(
         resource_name=_ask("Identifiant Terraform", "vm_web_01", input_fn),
         name=_ask("Nom de la VM GCP", "vm-web-01", input_fn),
@@ -105,7 +128,7 @@ def build_request(input_fn: InputFunction = input) -> CreateVMRequest:
     return CreateVMRequest(
         module_path=module_path,
         resource=resource,
-        project_id=project_id,
+        project_id=context.project_id,
     )
 
 
@@ -782,11 +805,13 @@ def ask_oci_compute_delete_parameters(
 
 def ask_gcp_compute_update_parameters(
     input_fn: InputFunction = input,
+    *,
+    gcp_context: GCPContext | None = None,
 ) -> UpdateVMRequest:
     default_module_path = str(GCP_COMPUTE_OUTPUT.resolve())
 
     print("\nNouvelles valeurs finales de la VM GCP\n")
-    project_id = _ask_required("Identifiant du projet GCP", input_fn)
+    context = _resolve_gcp_context(gcp_context, input_fn)
     resource = VMResource(
         resource_name=_ask(
             "Nom logique Terraform de la VM existante",
@@ -803,14 +828,17 @@ def ask_gcp_compute_update_parameters(
     return UpdateVMRequest(
         module_path=module_path,
         resource=resource,
-        project_id=project_id,
+        project_id=context.project_id,
     )
 
 
 def ask_gcp_compute_delete_parameters(
     input_fn: InputFunction = input,
+    *,
+    gcp_context: GCPContext | None = None,
 ) -> DeleteVMRequest:
     print("\nSuppression d'une VM Terraform GCP\n")
+    context = _resolve_gcp_context(gcp_context, input_fn)
     resource = ComputeDeleteResource(
         resource_name=_ask(
             "Nom logique Terraform de la VM a supprimer",
@@ -821,15 +849,19 @@ def ask_gcp_compute_delete_parameters(
     return DeleteVMRequest(
         module_path=str(GCP_COMPUTE_OUTPUT.resolve()),
         resource=resource,
+        project_id=context.project_id,
     )
 
 
 def ask_gcp_network_parameters(
     input_fn: InputFunction = input,
+    *,
+    gcp_context: GCPContext | None = None,
 ) -> CreateNetworkRequest:
     default_module_path = str(GCP_NETWORK_OUTPUT.resolve())
 
     print("\nParametres du reseau GCP (Entree conserve la valeur proposee)\n")
+    context = _resolve_gcp_context(gcp_context, input_fn)
     resource = NetworkResource(
         resource_name=_ask(
             "Nom logique Terraform du VPC", "vpc_prod", input_fn
@@ -843,15 +875,22 @@ def ask_gcp_network_parameters(
         region=_ask("Region", "europe-west1", input_fn),
     )
     module_path = _ask("Dossier Terraform cible", default_module_path, input_fn)
-    return CreateNetworkRequest(module_path=module_path, resource=resource)
+    return CreateNetworkRequest(
+        module_path=module_path,
+        resource=resource,
+        project_id=context.project_id,
+    )
 
 
 def ask_gcp_network_update_parameters(
     input_fn: InputFunction = input,
+    *,
+    gcp_context: GCPContext | None = None,
 ) -> UpdateNetworkRequest:
     default_module_path = str(GCP_NETWORK_OUTPUT.resolve())
 
     print("\nNouvelles valeurs finales du reseau GCP\n")
+    context = _resolve_gcp_context(gcp_context, input_fn)
     resource = NetworkResource(
         resource_name=_ask(
             "Nom logique Terraform du VPC existant",
@@ -873,13 +912,20 @@ def ask_gcp_network_update_parameters(
         region=_ask("Region", "europe-west1", input_fn),
     )
     module_path = _ask("Dossier Terraform cible", default_module_path, input_fn)
-    return UpdateNetworkRequest(module_path=module_path, resource=resource)
+    return UpdateNetworkRequest(
+        module_path=module_path,
+        resource=resource,
+        project_id=context.project_id,
+    )
 
 
 def ask_gcp_network_delete_parameters(
     input_fn: InputFunction = input,
+    *,
+    gcp_context: GCPContext | None = None,
 ) -> DeleteNetworkRequest:
     print("\nSuppression d'un reseau Terraform GCP\n")
+    context = _resolve_gcp_context(gcp_context, input_fn)
     resource = NetworkDeleteResource(
         resource_name=_ask(
             "Nom logique Terraform du VPC a supprimer",
@@ -895,15 +941,19 @@ def ask_gcp_network_delete_parameters(
     return DeleteNetworkRequest(
         module_path=str(GCP_NETWORK_OUTPUT.resolve()),
         resource=resource,
+        project_id=context.project_id,
     )
 
 
 def ask_gcp_storage_parameters(
     input_fn: InputFunction = input,
+    *,
+    gcp_context: GCPContext | None = None,
 ) -> CreateStorageRequest:
     default_module_path = str(GCP_STORAGE_OUTPUT.resolve())
 
     print("\nParametres du bucket GCS (Entree conserve la valeur proposee)\n")
+    context = _resolve_gcp_context(gcp_context, input_fn)
     resource = StorageResource(
         resource_name=_ask(
             "Nom logique Terraform du bucket", "bucket_backup_01", input_fn
@@ -916,15 +966,22 @@ def ask_gcp_storage_parameters(
         ),
     )
     module_path = _ask("Dossier Terraform cible", default_module_path, input_fn)
-    return CreateStorageRequest(module_path=module_path, resource=resource)
+    return CreateStorageRequest(
+        module_path=module_path,
+        resource=resource,
+        project_id=context.project_id,
+    )
 
 
 def ask_gcp_storage_update_parameters(
     input_fn: InputFunction = input,
+    *,
+    gcp_context: GCPContext | None = None,
 ) -> UpdateStorageRequest:
     default_module_path = str(GCP_STORAGE_OUTPUT.resolve())
 
     print("\nNouvelles valeurs finales du bucket GCS\n")
+    context = _resolve_gcp_context(gcp_context, input_fn)
     resource = StorageResource(
         resource_name=_ask(
             "Nom logique Terraform du bucket existant",
@@ -945,13 +1002,20 @@ def ask_gcp_storage_update_parameters(
         ),
     )
     module_path = _ask("Dossier Terraform cible", default_module_path, input_fn)
-    return UpdateStorageRequest(module_path=module_path, resource=resource)
+    return UpdateStorageRequest(
+        module_path=module_path,
+        resource=resource,
+        project_id=context.project_id,
+    )
 
 
 def ask_gcp_storage_delete_parameters(
     input_fn: InputFunction = input,
+    *,
+    gcp_context: GCPContext | None = None,
 ) -> DeleteStorageRequest:
     print("\nSuppression d'un bucket Terraform GCP\n")
+    context = _resolve_gcp_context(gcp_context, input_fn)
     resource = StorageDeleteResource(
         resource_name=_ask(
             "Nom logique Terraform du bucket a supprimer",
@@ -962,16 +1026,20 @@ def ask_gcp_storage_delete_parameters(
     return DeleteStorageRequest(
         module_path=str(GCP_STORAGE_OUTPUT.resolve()),
         resource=resource,
+        project_id=context.project_id,
     )
 
 
 def ask_gcp_iam_parameters(
     input_fn: InputFunction = input,
+    *,
+    gcp_context: GCPContext | None = None,
 ) -> CreateIAMRequest:
     print(
         "\nParametres du compte de service GCP "
         "(Entree conserve la valeur proposee)\n"
     )
+    context = _resolve_gcp_context(gcp_context, input_fn)
     resource = IAMResource(
         resource_name=_ask(
             "Nom logique Terraform du compte de service",
@@ -989,19 +1057,23 @@ def ask_gcp_iam_parameters(
             "Compte de service pour l'application principale",
             input_fn,
         ),
-        project_id=_ask("Project ID", "stage2026-project", input_fn),
+        project_id=context.project_id,
         role=_ask("Role IAM", "roles/logging.logWriter", input_fn),
     )
     return CreateIAMRequest(
         module_path=str(GCP_IAM_OUTPUT.resolve()),
         resource=resource,
+        project_id=context.project_id,
     )
 
 
 def ask_gcp_iam_update_parameters(
     input_fn: InputFunction = input,
+    *,
+    gcp_context: GCPContext | None = None,
 ) -> UpdateIAMRequest:
     print("\nNouvelles valeurs finales du compte de service GCP\n")
+    context = _resolve_gcp_context(gcp_context, input_fn)
     print(
         "Attention : modifier Account ID peut provoquer le remplacement du "
         "compte de service lors d'un futur terraform plan/apply.\n"
@@ -1027,7 +1099,7 @@ def ask_gcp_iam_update_parameters(
             "Compte de service de production pour les journaux",
             input_fn,
         ),
-        project_id=_ask("Project ID", "stage2026-project", input_fn),
+        project_id=context.project_id,
         role=_ask(
             "Nouveau rôle IAM",
             "roles/logging.logWriter",
@@ -1037,13 +1109,17 @@ def ask_gcp_iam_update_parameters(
     return UpdateIAMRequest(
         module_path=str(GCP_IAM_OUTPUT.resolve()),
         resource=resource,
+        project_id=context.project_id,
     )
 
 
 def ask_gcp_iam_delete_parameters(
     input_fn: InputFunction = input,
+    *,
+    gcp_context: GCPContext | None = None,
 ) -> DeleteIAMRequest:
     print("\nSuppression locale d'un compte de service Terraform GCP\n")
+    context = _resolve_gcp_context(gcp_context, input_fn)
     resource = IAMDeleteResource(
         resource_name=_ask(
             "Nom logique Terraform du compte de service à supprimer",
@@ -1054,4 +1130,5 @@ def ask_gcp_iam_delete_parameters(
     return DeleteIAMRequest(
         module_path=str(GCP_IAM_OUTPUT.resolve()),
         resource=resource,
+        project_id=context.project_id,
     )

@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch
 
 import app
-from models import IAMResource, UpdateIAMRequest
+from models import GCPContext, IAMResource, UpdateIAMRequest
 from request_builder import GCP_IAM_OUTPUT, ask_gcp_iam_update_parameters
 from validators import ValidationError, validate_request
 
@@ -17,11 +17,13 @@ class IAMUpdateTests(unittest.TestCase):
                 "sa-logging-prod-01",
                 "Service Account Logging Production",
                 "Compte de service de production pour les journaux",
-                "stage2026-project",
                 "roles/logging.logWriter",
             ]
         )
-        request = ask_gcp_iam_update_parameters(lambda _: next(answers))
+        request = ask_gcp_iam_update_parameters(
+            lambda _: next(answers),
+            gcp_context=GCPContext("example-test-project"),
+        )
 
         self.assertIsInstance(request, UpdateIAMRequest)
         self.assertEqual(request.action, "update")
@@ -103,13 +105,14 @@ class IAMUpdateTests(unittest.TestCase):
                     "account_id": "sa-logging-01",
                     "display_name": "Service Account Logging Production",
                     "description": "Compte de service pour les journaux",
-                    "project_id": "stage2026-project",
+                    "project_id": "example-test-project",
                     "role": "roles/logging.logWriter",
                 }
                 values.update(replacement)
                 ask_mock.return_value = UpdateIAMRequest(
                     module_path=str(GCP_IAM_OUTPUT.resolve()),
                     resource=IAMResource(**values),
+                    project_id="example-test-project",
                 )
                 with self.assertRaises(ValidationError):
                     app.update_gcp_iam()
@@ -121,12 +124,13 @@ class IAMUpdateTests(unittest.TestCase):
     def _request(role: str) -> UpdateIAMRequest:
         return UpdateIAMRequest(
             module_path=str(GCP_IAM_OUTPUT.resolve()),
+            project_id="example-test-project",
             resource=IAMResource(
                 resource_name="sa_logging_01",
                 account_id="sa-logging-01",
                 display_name="Service Account Logging Production",
                 description="Compte de service pour les journaux",
-                project_id="stage2026-project",
+                project_id="example-test-project",
                 role=role,
             ),
         )

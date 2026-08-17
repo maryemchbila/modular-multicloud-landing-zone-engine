@@ -227,7 +227,7 @@ func TestIAMDeleteBlocksCertainCrossModuleDependencies(t *testing.T) {
 				block.Body().SetAttributeValue(
 					"service_account_email",
 					cty.StringVal(
-						"sa-delete-test-01@stage2026-project."+
+						"sa-delete-test-01@example-test-project."+
 							"iam.gserviceaccount.com",
 					),
 				)
@@ -305,6 +305,7 @@ func deleteIAMRequest(
 		Provider:   "gcp",
 		Module:     "iam",
 		ModulePath: modulePath,
+		ProjectID:  "example-test-project",
 		IAMResource: &models.IAMRequest{
 			ResourceName: resourceName,
 		},

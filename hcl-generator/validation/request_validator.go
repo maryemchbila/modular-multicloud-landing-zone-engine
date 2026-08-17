@@ -69,12 +69,9 @@ func ValidateRequest(request *models.Request) error {
 }
 
 func validateGCPRequest(request *models.Request) error {
-	if request.Module == "compute" &&
-		(request.Action == "create" || request.Action == "update") {
-		request.ProjectID = strings.TrimSpace(request.ProjectID)
-		if request.ProjectID == "" {
-			return fmt.Errorf("champ obligatoire manquant : project_id")
-		}
+	request.ProjectID = strings.TrimSpace(request.ProjectID)
+	if request.ProjectID == "" {
+		return fmt.Errorf("champ obligatoire manquant : project_id")
 	}
 
 	if request.Action == "update" &&
@@ -739,6 +736,7 @@ func validateIAMRequest(request *models.Request) error {
 		}
 		return nil
 	}
+	resource.ProjectID = strings.TrimSpace(resource.ProjectID)
 
 	required := map[string]string{
 		"resource.resource_name": resource.ResourceName,
@@ -752,6 +750,11 @@ func validateIAMRequest(request *models.Request) error {
 		if strings.TrimSpace(value) == "" {
 			return fmt.Errorf("champ obligatoire manquant : %s", field)
 		}
+	}
+	if resource.ProjectID != request.ProjectID {
+		return fmt.Errorf(
+			"resource.project_id doit correspondre au contexte GCP project_id",
+		)
 	}
 
 	if !terraformIdentifier.MatchString(resource.ResourceName) {

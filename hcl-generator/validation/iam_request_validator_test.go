@@ -70,6 +70,15 @@ func TestValidateIAMRejectsWrongPath(t *testing.T) {
 	}
 }
 
+func TestValidateIAMRequiresResourceProjectToMatchContext(t *testing.T) {
+	request := validIAMRequest(t)
+	request.IAMResource.ProjectID = "another-project"
+	err := ValidateRequest(request)
+	if err == nil || !strings.Contains(err.Error(), "doit correspondre") {
+		t.Fatalf("mismatched IAM project returned unexpected error: %v", err)
+	}
+}
+
 func validIAMRequest(t *testing.T) *models.Request {
 	t.Helper()
 	return &models.Request{
@@ -77,12 +86,13 @@ func validIAMRequest(t *testing.T) *models.Request {
 		Provider:   "gcp",
 		Module:     "iam",
 		ModulePath: filepath.Join(t.TempDir(), "generated", "gcp", "modules", "iam"),
+		ProjectID:  "example-test-project",
 		IAMResource: &models.IAMRequest{
 			ResourceName: "sa_logging_01",
 			AccountID:    "sa-logging-01",
 			DisplayName:  "Service Account Logging 01",
 			Description:  "Compte de service pour les journaux",
-			ProjectID:    "stage2026-project",
+			ProjectID:    "example-test-project",
 			Role:         "roles/logging.logWriter",
 		},
 	}

@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch
 
 import app
-from models import StorageResource, UpdateStorageRequest
+from models import GCPContext, StorageResource, UpdateStorageRequest
 from request_builder import (
     GCP_STORAGE_OUTPUT,
     _ask_bool,
@@ -25,7 +25,10 @@ class StorageUpdateTests(unittest.TestCase):
                 "",
             ]
         )
-        request = ask_gcp_storage_update_parameters(lambda _: next(answers))
+        request = ask_gcp_storage_update_parameters(
+            lambda _: next(answers),
+            gcp_context=GCPContext("example-test-project"),
+        )
 
         self.assertIsInstance(request, UpdateStorageRequest)
         self.assertEqual(request.action, "update")
@@ -67,6 +70,7 @@ class StorageUpdateTests(unittest.TestCase):
     ) -> None:
         ask_mock.return_value = UpdateStorageRequest(
             module_path=str(GCP_STORAGE_OUTPUT.resolve()),
+            project_id="example-test-project",
             resource=StorageResource(
                 resource_name="bucket_test_01",
                 name="stage2026-storage-production-01",
@@ -105,8 +109,9 @@ class StorageUpdateTests(unittest.TestCase):
 
         with patch(
             "app.ask_gcp_storage_update_parameters",
-            side_effect=lambda: ask_gcp_storage_update_parameters(
-                lambda _: next(answers)
+            side_effect=lambda **_kwargs: ask_gcp_storage_update_parameters(
+                lambda _: next(answers),
+                gcp_context=GCPContext("example-test-project"),
             ),
         ):
             with self.assertRaisesRegex(ValueError, "doit valoir"):

@@ -46,15 +46,15 @@ func PrepareOCIRootModule(
 }
 
 func addOCIChildProviderRequirements(plan *commonroot.Plan, rootPath string) {
-	content := []byte(`terraform {
+	content := []byte(fmt.Sprintf(`terraform {
   required_providers {
     oci = {
       source  = "oracle/oci"
-      version = "~> 8.0"
+      version = %q
     }
   }
 }
-`)
+`, ociconfig.ProviderConstraint))
 	for _, moduleName := range commonroot.ModuleNames {
 		mainPath := filepath.Join(rootPath, "modules", moduleName, "main.tf")
 		if len(bytes.TrimSpace(plan.Prepared[mainPath])) == 0 {

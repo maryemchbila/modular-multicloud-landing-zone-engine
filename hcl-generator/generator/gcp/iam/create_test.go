@@ -101,12 +101,13 @@ func iamRequest(
 		Provider:   "gcp",
 		Module:     "iam",
 		ModulePath: modulePath,
+		ProjectID:  "example-test-project",
 		IAMResource: &models.IAMRequest{
 			ResourceName: resourceName,
 			AccountID:    accountID,
 			DisplayName:  displayName,
 			Description:  description,
-			ProjectID:    "stage2026-project",
+			ProjectID:    "example-test-project",
 			Role:         role,
 		},
 	}

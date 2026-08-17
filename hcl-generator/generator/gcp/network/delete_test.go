@@ -62,8 +62,8 @@ func TestNetworkDeleteRemovesOnlyTargetPair(t *testing.T) {
 	); count != 4 {
 		t.Fatalf("remaining variable count = %d, want 4", count)
 	}
-	if count := len(afterTfvarsKeys(t, after["terraform.tfvars"])); count != 4 {
-		t.Fatalf("remaining tfvars count = %d, want 4", count)
+	if count := len(afterTfvarsKeys(t, after["terraform.tfvars"])); count != 5 {
+		t.Fatalf("remaining tfvars count = %d, want 5", count)
 	}
 	if count := strings.Count(string(after["outputs.tf"]), `output "`); count != 2 {
 		t.Fatalf("remaining output count = %d, want 2", count)
@@ -180,6 +180,7 @@ func TestNetworkDeleteBlocksCertainComputeDependency(t *testing.T) {
 		Provider:   "gcp",
 		Module:     "compute",
 		ModulePath: computePath,
+		ProjectID:  "example-test-project",
 		ComputeResource: &models.ComputeRequest{
 			ResourceName: "vm_network_consumer_01",
 			Name:         "vm-network-consumer-01",

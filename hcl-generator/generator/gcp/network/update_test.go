@@ -261,6 +261,7 @@ func TestNetworkUpdateDoesNotModifyComputeOrStorage(t *testing.T) {
 		Provider:   "gcp",
 		Module:     "storage",
 		ModulePath: storagePath,
+		ProjectID:  "example-test-project",
 		StorageResource: &models.StorageRequest{
 			ResourceName:             "bucket_isolation_01",
 			Name:                     "stage2026-isolation-01",

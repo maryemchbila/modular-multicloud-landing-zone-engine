@@ -30,6 +30,10 @@ func TestEnsureOCIRootConfigurationCreatesValidFilesWithTraversal(t *testing.T) 
 		requiredProviders.Body().GetAttribute("oci") == nil {
 		t.Fatal("required_providers.oci absent")
 	}
+	versionsContent := string(readOCIFile(t, filepath.Join(root, "versions.tf")))
+	if !strings.Contains(versionsContent, `version = "= 8.23.0"`) {
+		t.Fatal("le provider OCI racine doit rester verrouille sur 8.23.0")
+	}
 
 	providers := parseOCIFile(t, filepath.Join(root, "providers.tf"))
 	providerBlock := findOCIBlock(providers.Body(), "provider", "oci")

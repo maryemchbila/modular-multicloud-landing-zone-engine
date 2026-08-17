@@ -5,6 +5,11 @@ from typing import Any, Dict, List
 
 
 @dataclass(frozen=True)
+class GCPContext:
+    project_id: str
+
+
+@dataclass(frozen=True)
 class VMResource:
     resource_name: str
     name: str
@@ -452,6 +457,7 @@ class ComputeDeleteResource:
 class DeleteVMRequest:
     module_path: str
     resource: ComputeDeleteResource
+    project_id: str = ""
     action: str = "delete"
     provider: str = "gcp"
     module: str = "compute"
@@ -463,6 +469,7 @@ class DeleteVMRequest:
             "provider": self.provider,
             "module": self.module,
             "module_path": self.module_path,
+            "project_id": self.project_id,
             "resource": asdict(self.resource),
         }
 
@@ -481,6 +488,7 @@ class NetworkResource:
 class CreateNetworkRequest:
     module_path: str
     resource: NetworkResource
+    project_id: str = ""
     action: str = "create"
     provider: str = "gcp"
     module: str = "network"
@@ -492,6 +500,7 @@ class CreateNetworkRequest:
             "provider": self.provider,
             "module": self.module,
             "module_path": self.module_path,
+            "project_id": self.project_id,
             "resource": asdict(self.resource),
         }
 
@@ -500,6 +509,7 @@ class CreateNetworkRequest:
 class UpdateNetworkRequest:
     module_path: str
     resource: NetworkResource
+    project_id: str = ""
     action: str = "update"
     provider: str = "gcp"
     module: str = "network"
@@ -511,6 +521,7 @@ class UpdateNetworkRequest:
             "provider": self.provider,
             "module": self.module,
             "module_path": self.module_path,
+            "project_id": self.project_id,
             "resource": asdict(self.resource),
         }
 
@@ -525,6 +536,7 @@ class NetworkDeleteResource:
 class DeleteNetworkRequest:
     module_path: str
     resource: NetworkDeleteResource
+    project_id: str = ""
     action: str = "delete"
     provider: str = "gcp"
     module: str = "network"
@@ -536,6 +548,7 @@ class DeleteNetworkRequest:
             "provider": self.provider,
             "module": self.module,
             "module_path": self.module_path,
+            "project_id": self.project_id,
             "resource": asdict(self.resource),
         }
 
@@ -560,6 +573,7 @@ class StorageResource:
 class CreateStorageRequest:
     module_path: str
     resource: StorageResource
+    project_id: str = ""
     action: str = "create"
     provider: str = "gcp"
     module: str = "storage"
@@ -571,6 +585,7 @@ class CreateStorageRequest:
             "provider": self.provider,
             "module": self.module,
             "module_path": self.module_path,
+            "project_id": self.project_id,
             "resource": asdict(self.resource),
         }
 
@@ -579,6 +594,7 @@ class CreateStorageRequest:
 class UpdateStorageRequest:
     module_path: str
     resource: StorageResource
+    project_id: str = ""
     action: str = "update"
     provider: str = "gcp"
     module: str = "storage"
@@ -590,6 +606,7 @@ class UpdateStorageRequest:
             "provider": self.provider,
             "module": self.module,
             "module_path": self.module_path,
+            "project_id": self.project_id,
             "resource": asdict(self.resource),
         }
 
@@ -603,6 +620,7 @@ class StorageDeleteResource:
 class DeleteStorageRequest:
     module_path: str
     resource: StorageDeleteResource
+    project_id: str = ""
     action: str = "delete"
     provider: str = "gcp"
     module: str = "storage"
@@ -614,6 +632,7 @@ class DeleteStorageRequest:
             "provider": self.provider,
             "module": self.module,
             "module_path": self.module_path,
+            "project_id": self.project_id,
             "resource": asdict(self.resource),
         }
 
@@ -632,6 +651,7 @@ class IAMResource:
 class CreateIAMRequest:
     module_path: str
     resource: IAMResource
+    project_id: str = ""
     action: str = "create"
     provider: str = "gcp"
     module: str = "iam"
@@ -643,6 +663,7 @@ class CreateIAMRequest:
             "provider": self.provider,
             "module": self.module,
             "module_path": self.module_path,
+            "project_id": self.project_id,
             "resource": asdict(self.resource),
         }
 
@@ -651,6 +672,7 @@ class CreateIAMRequest:
 class UpdateIAMRequest:
     module_path: str
     resource: IAMResource
+    project_id: str = ""
     action: str = "update"
     provider: str = "gcp"
     module: str = "iam"
@@ -662,6 +684,7 @@ class UpdateIAMRequest:
             "provider": self.provider,
             "module": self.module,
             "module_path": self.module_path,
+            "project_id": self.project_id,
             "resource": asdict(self.resource),
         }
 
@@ -675,6 +698,7 @@ class IAMDeleteResource:
 class DeleteIAMRequest:
     module_path: str
     resource: IAMDeleteResource
+    project_id: str = ""
     action: str = "delete"
     provider: str = "gcp"
     module: str = "iam"
@@ -686,5 +710,6 @@ class DeleteIAMRequest:
             "provider": self.provider,
             "module": self.module,
             "module_path": self.module_path,
+            "project_id": self.project_id,
             "resource": asdict(self.resource),
         }

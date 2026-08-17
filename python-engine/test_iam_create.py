@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch
 
 import app
-from models import CreateIAMRequest, IAMResource
+from models import CreateIAMRequest, GCPContext, IAMResource
 from request_builder import GCP_IAM_OUTPUT, ask_gcp_iam_parameters
 from validators import ValidationError, validate_request
 
@@ -17,11 +17,13 @@ class IAMCreateTests(unittest.TestCase):
                 "sa-logging-01",
                 "Service Account Logging 01",
                 "Compte de service pour l'ecriture des journaux",
-                "stage2026-project",
                 "roles/logging.logWriter",
             ]
         )
-        request = ask_gcp_iam_parameters(lambda _: next(answers))
+        request = ask_gcp_iam_parameters(
+            lambda _: next(answers),
+            gcp_context=GCPContext("example-test-project"),
+        )
 
         self.assertIsInstance(request, CreateIAMRequest)
         self.assertEqual(request.module_path, str(GCP_IAM_OUTPUT.resolve()))
@@ -71,7 +73,7 @@ class IAMCreateTests(unittest.TestCase):
                 account_id="sa-app-01",
                 display_name="Service Account Application 01",
                 description="Description",
-                project_id="stage2026-project",
+                project_id="example-test-project",
                 role="roles/logging.logWriter",
             ),
             IAMResource(
@@ -79,7 +81,7 @@ class IAMCreateTests(unittest.TestCase):
                 account_id="sa-app-01",
                 display_name="Service Account Application 01",
                 description="Description",
-                project_id="stage2026-project",
+                project_id="example-test-project",
                 role="roles/logging.logWriter",
             ),
             IAMResource(
@@ -87,7 +89,7 @@ class IAMCreateTests(unittest.TestCase):
                 account_id="",
                 display_name="Service Account Application 01",
                 description="Description",
-                project_id="stage2026-project",
+                project_id="example-test-project",
                 role="roles/logging.logWriter",
             ),
             IAMResource(
@@ -103,7 +105,7 @@ class IAMCreateTests(unittest.TestCase):
                 account_id="sa-app-01",
                 display_name="Service Account Application 01",
                 description="Description",
-                project_id="stage2026-project",
+                project_id="example-test-project",
                 role="logging.logWriter",
             ),
         ]
@@ -113,6 +115,7 @@ class IAMCreateTests(unittest.TestCase):
                 ask_mock.return_value = CreateIAMRequest(
                     module_path=str(GCP_IAM_OUTPUT.resolve()),
                     resource=resource,
+                    project_id="example-test-project",
                 )
                 with self.assertRaises(ValidationError):
                     app.create_gcp_iam()
@@ -127,12 +130,13 @@ class IAMCreateTests(unittest.TestCase):
     def _request(role: str) -> CreateIAMRequest:
         return CreateIAMRequest(
             module_path=str(GCP_IAM_OUTPUT.resolve()),
+            project_id="example-test-project",
             resource=IAMResource(
                 resource_name="sa_app_01",
                 account_id="sa-app-01",
                 display_name="Service Account Application 01",
                 description="Description",
-                project_id="stage2026-project",
+                project_id="example-test-project",
                 role=role,
             ),
         )
