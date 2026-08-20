@@ -1,0 +1,69 @@
+client:
+  id: example-client
+  name: Example Client
+
+environments:
+  dev:
+    enabled: true
+  staging:
+    enabled: true
+  prod:
+    enabled: true
+
+clouds:
+  gcp:
+    enabled: true
+    project_id: example-project
+    default_region: europe-west1
+    default_zone: europe-west1-b
+    credential_profile: gcp-example
+  oci:
+    enabled: true
+    region: eu-frankfurt-1
+    compartment_ocid: ocid1.compartment.example
+    credential_profile: oci-example
+
+credential_profiles:
+  gcp-example:
+    provider: gcp
+    auth_mode: ADC
+    source_type: OS_PROFILE
+    reference: application-default
+  oci-example:
+    provider: oci
+    auth_mode: API_KEY_PROFILE
+    source_type: OS_PROFILE
+    reference: C:\secure\example-oci-config
+    profile_name: EXAMPLE
+
+state:
+  mode: remote
+  backend_profile:
+    gcp: gcp-example-state
+    oci: oci-example-state
+
+state_profiles:
+  gcp-example-state:
+    provider: gcp
+    backend_type: gcs
+    bucket: example-existing-state-bucket
+    credential_profile: gcp-example
+    locking_expected: true
+    versioning_expected: true
+  oci-example-state:
+    provider: oci
+    backend_type: oci
+    bucket: example-existing-state-bucket
+    namespace: example-namespace
+    region: eu-frankfurt-1
+    credential_profile: oci-example
+    locking_expected: true
+    versioning_expected: true
+
+security:
+  profile: BASELINE
+
+governance:
+  apply_requires_approval: true
+  destroy_requires_approval: true
+  production_destroy_enabled: false

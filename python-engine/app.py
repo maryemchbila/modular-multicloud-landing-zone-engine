@@ -9,6 +9,12 @@ from pathlib import Path
 
 from app_governance import run_governance_after_generation
 from client_context import ClientContextError, validate_client_context
+from client_config import (
+    ClientRuntimeSelection,
+    discover_client_config,
+    load_client_config,
+    select_runtime_configuration,
+)
 from client_paths import build_client_module_path
 from go_client import GoClientError, run_generator
 from models import ClientContext, GCPContext
@@ -39,6 +45,8 @@ from request_builder import (
     ask_oci_storage_update_parameters,
     build_request,
 )
+from safe_data import redact_sensitive_data
+from state_config import detect_terraform_version, write_backend_runtime_files
 from validators import ValidationError, validate_request
 
 
@@ -107,9 +115,79 @@ def save_request(payload: dict) -> Path:
     )
     path = REQUEST_DIRECTORY / filename
     with path.open("x", encoding="utf-8") as request_file:
-        json.dump(payload, request_file, ensure_ascii=False, indent=2)
+        json.dump(
+            redact_sensitive_data(payload),
+            request_file,
+            ensure_ascii=False,
+            indent=2,
+        )
         request_file.write("\n")
     return path
+
+
+def load_client_runtime(
+    client_context: ClientContext,
+    provider: str,
+) -> ClientRuntimeSelection | None:
+    """Charge une configuration si le client en possede une, sinon garde J1."""
+
+    path = discover_client_config(client_context.client_id)
+    if path is None:
+        return None
+    config = load_client_config(path, runtime_client_id=client_context.client_id)
+    selection = select_runtime_configuration(
+        config,
+        client_context.environment,
+        provider,
+        terraform_version=detect_terraform_version(),
+    )
+    if not selection.backend.native_backend_available:
+        raise ValueError(selection.backend.reason)
+    write_backend_runtime_files(
+        selection.backend,
+        selection.client_id,
+        selection.environment,
+        selection.provider,
+    )
+    return selection
+
+
+def print_client_runtime_summary(selection: ClientRuntimeSelection) -> None:
+    """Affiche uniquement les identifiants et statuts non sensibles."""
+
+    region = selection.cloud.get("default_region") or selection.cloud.get("region")
+    target_field = (
+        ("Project ID", selection.cloud.get("project_id"))
+        if selection.provider == "gcp"
+        else ("Compartment OCID", selection.cloud.get("compartment_ocid"))
+    )
+    fields = [
+        ("Runtime Mode", "CONFIG_MODE"),
+        ("Client", selection.client_id),
+        ("Environment", selection.environment),
+        ("Provider", selection.provider),
+        target_field,
+        ("Region", region),
+        ("Credential Profile", selection.credential_profile.credential_id),
+        ("Credential Mode", selection.credential_profile.auth_mode),
+        ("Credential Status", selection.credential_status),
+    ]
+    if selection.credential_status != "VALID":
+        fields.append(("Reason", selection.credential_reason_code))
+    fields.extend(
+        (
+            ("State Mode", selection.state_mode),
+            ("Backend Type", selection.backend.backend_type),
+            ("State Identity", selection.state_identity),
+        )
+    )
+    print("\n" + "=" * 60)
+    print(" CLIENT CLOUD RUNTIME")
+    print("=" * 60)
+    for label, value in fields:
+        safe = redact_sensitive_data({label: value})[label]
+        print(f"{label:<23}: {safe}")
+    print("=" * 60)
 
 
 def _generate(payload: dict) -> bool:
@@ -560,9 +638,22 @@ def main() -> int:
         print("===============================\n")
         provider = choose_provider()
         client_context = ask_client_context()
+        client_runtime = load_client_runtime(client_context, provider)
         gcp_context = None
-        if provider == "gcp":
-            gcp_context = ask_gcp_context()
+        if client_runtime is not None:
+            if provider == "gcp":
+                gcp_context = GCPContext(str(client_runtime.cloud["project_id"]))
+            print_client_runtime_summary(client_runtime)
+            if client_runtime.credential_status != "VALID":
+                print(
+                    "Credential validation failed: offline HCL generation remains "
+                    "available; Terraform governance will not run."
+                )
+        else:
+            print("\nRuntime Mode           : LEGACY_MANUAL_MODE")
+            if provider == "gcp":
+                gcp_context = ask_gcp_context()
+        if provider == "gcp" and gcp_context is not None:
             print(f"\nProjet GCP cible : {gcp_context.project_id}")
         module = choose_module()
         action = choose_action()
@@ -579,6 +670,12 @@ def main() -> int:
         if generation_succeeded is not True:
             print("\nGeneration : NOT_RUN")
             print("Governance : NOT_RUN")
+            return 0
+        if (
+            client_runtime is not None
+            and client_runtime.credential_status != "VALID"
+        ):
+            print("\nGovernance : NOT_RUN_CREDENTIAL_INVALID")
             return 0
         run_governance_after_generation(provider)
         return 0

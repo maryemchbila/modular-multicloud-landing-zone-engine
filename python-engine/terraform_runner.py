@@ -8,7 +8,9 @@ import shutil
 import subprocess
 import time
 from pathlib import Path
-from typing import Sequence
+from typing import Mapping, Sequence
+
+from safe_data import redact_sensitive_data
 
 from terraform_models import (
     TerraformArgumentsError,
@@ -47,6 +49,7 @@ class TerraformRunner:
         args: Sequence[str],
         cwd: Path,
         timeout: float | None = None,
+        env_overrides: Mapping[str, str] | None = None,
     ) -> TerraformResult:
         """Execute Terraform et retourne stdout, stderr, code et duree separes."""
 
@@ -57,9 +60,12 @@ class TerraformRunner:
             self.default_timeout if timeout is None else timeout
         )
         command = [executable, *safe_args]
+        runtime_environment = self._validate_env_overrides(env_overrides)
         child_environment = os.environ.copy()
+        child_environment.update(runtime_environment)
         child_environment["TF_IN_AUTOMATION"] = "1"
         child_environment["TF_INPUT"] = "0"
+        sensitive_values = tuple(runtime_environment.values())
 
         LOGGER.info(
             "Terraform command: %s; cwd: %s",
@@ -89,8 +95,14 @@ class TerraformRunner:
                 args=safe_args,
                 working_directory=str(working_directory),
                 exit_code=None,
-                stdout=self._normalise_output(exc.stdout),
-                stderr=self._normalise_output(exc.stderr),
+                stdout=redact_sensitive_data(
+                    self._normalise_output(exc.stdout),
+                    sensitive_values=sensitive_values,
+                ),
+                stderr=redact_sensitive_data(
+                    self._normalise_output(exc.stderr),
+                    sensitive_values=sensitive_values,
+                ),
                 duration_seconds=duration,
                 timed_out=True,
                 success=False,
@@ -112,8 +124,14 @@ class TerraformRunner:
             args=safe_args,
             working_directory=str(working_directory),
             exit_code=completed.returncode,
-            stdout=completed.stdout,
-            stderr=completed.stderr,
+            stdout=redact_sensitive_data(
+                completed.stdout,
+                sensitive_values=sensitive_values,
+            ),
+            stderr=redact_sensitive_data(
+                completed.stderr,
+                sensitive_values=sensitive_values,
+            ),
             duration_seconds=duration,
             timed_out=False,
             success=completed.returncode == 0,
@@ -205,3 +223,25 @@ class TerraformRunner:
         if isinstance(output, bytes):
             return output.decode("utf-8", errors="replace")
         return output
+
+    @staticmethod
+    def _validate_env_overrides(
+        env_overrides: Mapping[str, str] | None,
+    ) -> dict[str, str]:
+        if env_overrides is None:
+            return {}
+        if not isinstance(env_overrides, Mapping):
+            raise ValueError("env_overrides doit etre un mapping")
+        validated: dict[str, str] = {}
+        for name, value in env_overrides.items():
+            if (
+                not isinstance(name, str)
+                or not name
+                or "=" in name
+                or "\x00" in name
+                or not isinstance(value, str)
+                or "\x00" in value
+            ):
+                raise ValueError("env_overrides contient une entree invalide")
+            validated[name] = value
+        return validated

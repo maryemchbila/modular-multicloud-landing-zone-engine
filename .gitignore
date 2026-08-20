@@ -23,12 +23,21 @@ env/
 .terraform.tfstate.lock.info
 .terraform.lock.hcl
 /runtime/
+*.tfbackend
+backend.runtime.*
 
 # Variables sensibles
 terraform.tfvars
 terraform.tfvars.json
 *.auto.tfvars
 *.auto.tfvars.json
+*credentials*.json
+*service-account*.json
+*.pem
+*.key
+*.p12
+*.secret
+*.secrets
 
 # Fichiers temporaires
 /.go-tmp/

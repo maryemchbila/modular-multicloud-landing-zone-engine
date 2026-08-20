@@ -100,6 +100,8 @@ class AppGovernanceIntegrationTests(unittest.TestCase):
                     environment="dev",
                 ),
             ), patch(
+                "app.load_client_runtime", return_value=None
+            ), patch(
                 "app.ask_gcp_context",
                 return_value=GCPContext("example-test-project"),
             ), patch("app.choose_module", return_value="compute"), patch(
