@@ -12,7 +12,7 @@ from unittest.mock import Mock, patch
 import app
 import app_governance
 from go_client import GoClientError
-from models import GCPContext
+from models import ClientContext, GCPContext
 
 
 def _status(value: str) -> SimpleNamespace:
@@ -94,6 +94,12 @@ class AppGovernanceIntegrationTests(unittest.TestCase):
             with self.subTest(cloud=cloud), patch(
                 "app.choose_provider", return_value=cloud
             ), patch(
+                "app.ask_client_context",
+                return_value=ClientContext(
+                    client_id="example-client",
+                    environment="dev",
+                ),
+            ), patch(
                 "app.ask_gcp_context",
                 return_value=GCPContext("example-test-project"),
             ), patch("app.choose_module", return_value="compute"), patch(
@@ -117,6 +123,12 @@ class AppGovernanceIntegrationTests(unittest.TestCase):
     def test_generation_failure_never_calls_governance(self) -> None:
         stderr = io.StringIO()
         with patch("app.choose_provider", return_value="gcp"), patch(
+            "app.ask_client_context",
+            return_value=ClientContext(
+                client_id="example-client",
+                environment="dev",
+            ),
+        ), patch(
             "app.ask_gcp_context",
             return_value=GCPContext("example-test-project"),
         ), patch(
@@ -136,6 +148,12 @@ class AppGovernanceIntegrationTests(unittest.TestCase):
     def test_cancelled_generation_does_not_run_governance(self) -> None:
         output = io.StringIO()
         with patch("app.choose_provider", return_value="oci"), patch(
+            "app.ask_client_context",
+            return_value=ClientContext(
+                client_id="example-client",
+                environment="dev",
+            ),
+        ), patch(
             "app.choose_module", return_value="compute"
         ), patch("app.choose_action", return_value="delete"), patch(
             "app.dispatch", return_value=False

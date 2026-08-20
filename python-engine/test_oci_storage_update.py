@@ -60,7 +60,7 @@ class OCIStorageUpdateTests(unittest.TestCase):
         update_mock.assert_called_once_with()
 
     @patch("app.update_oci_storage")
-    @patch("builtins.input", side_effect=["2", "3", "2"])
+    @patch("builtins.input", side_effect=["2", "example-client", "dev", "3", "2"])
     def test_menu_choices_2_3_2_launch_update(
         self,
         _input_mock,

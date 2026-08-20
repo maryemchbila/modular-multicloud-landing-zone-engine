@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 from typing import List, Union
 
+from client_context import ClientContextError, validate_client_context
 from models import (
     CreateIAMRequest,
     CreateNetworkRequest,
@@ -157,6 +158,14 @@ def validate_request(
     ],
 ) -> None:
     errors: List[str] = []
+
+    # Les appels API legacy sans contexte restent valides. Des qu'un champ de
+    # contexte est present, les deux deviennent obligatoires.
+    if request.client_id or request.environment:
+        try:
+            validate_client_context(request.client_id, request.environment)
+        except ClientContextError as exc:
+            errors.append(str(exc))
 
     if isinstance(
         request,

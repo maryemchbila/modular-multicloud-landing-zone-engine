@@ -19,8 +19,10 @@ env/
 .terraform/
 *.tfstate
 *.tfstate.*
+*.tfplan
 .terraform.tfstate.lock.info
 .terraform.lock.hcl
+/runtime/
 
 # Variables sensibles
 terraform.tfvars
@@ -29,6 +31,7 @@ terraform.tfvars.json
 *.auto.tfvars.json
 
 # Fichiers temporaires
+/.go-tmp/
 request.json
 generated_requests/
 /artifacts/terraform/reports/

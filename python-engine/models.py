@@ -9,6 +9,18 @@ class GCPContext:
     project_id: str
 
 
+@dataclass(frozen=True, kw_only=True)
+class ClientContext:
+    client_id: str = ""
+    environment: str = ""
+
+    def context_dict(self) -> Dict[str, str]:
+        return {
+            "client_id": self.client_id,
+            "environment": self.environment,
+        }
+
+
 @dataclass(frozen=True)
 class VMResource:
     resource_name: str
@@ -20,7 +32,7 @@ class VMResource:
 
 
 @dataclass(frozen=True)
-class CreateVMRequest:
+class CreateVMRequest(ClientContext):
     module_path: str
     resource: VMResource
     project_id: str
@@ -31,6 +43,7 @@ class CreateVMRequest:
     def to_dict(self) -> Dict[str, Any]:
         """Retourne le contrat JSON attendu par le programme Go."""
         return {
+            **self.context_dict(),
             "action": self.action,
             "provider": self.provider,
             "module": self.module,
@@ -53,7 +66,7 @@ class OCIComputeResource:
 
 
 @dataclass(frozen=True)
-class CreateOCIComputeRequest:
+class CreateOCIComputeRequest(ClientContext):
     module_path: str
     resource: OCIComputeResource
     action: str = "create"
@@ -63,6 +76,7 @@ class CreateOCIComputeRequest:
     def to_dict(self) -> Dict[str, Any]:
         """Retourne le contrat JSON OCI Compute Create attendu par Go."""
         return {
+            **self.context_dict(),
             "action": self.action,
             "provider": self.provider,
             "module": self.module,
@@ -99,7 +113,7 @@ class OCINetworkResource:
 
 
 @dataclass(frozen=True)
-class CreateOCINetworkRequest:
+class CreateOCINetworkRequest(ClientContext):
     module_path: str
     resource: OCINetworkResource
     action: str = "create"
@@ -109,6 +123,7 @@ class CreateOCINetworkRequest:
     def to_dict(self) -> Dict[str, Any]:
         """Retourne le contrat JSON OCI Network Create attendu par Go."""
         return {
+            **self.context_dict(),
             "action": self.action,
             "provider": self.provider,
             "module": self.module,
@@ -154,7 +169,7 @@ class OCIStorageResource:
 
 
 @dataclass(frozen=True)
-class CreateOCIStorageRequest:
+class CreateOCIStorageRequest(ClientContext):
     module_path: str
     resource: OCIStorageResource
     action: str = "create"
@@ -164,6 +179,7 @@ class CreateOCIStorageRequest:
     def to_dict(self) -> Dict[str, Any]:
         """Retourne le contrat JSON OCI Storage Create attendu par Go."""
         return {
+            **self.context_dict(),
             "action": self.action,
             "provider": self.provider,
             "module": self.module,
@@ -173,7 +189,7 @@ class CreateOCIStorageRequest:
 
 
 @dataclass(frozen=True)
-class UpdateOCIStorageRequest:
+class UpdateOCIStorageRequest(ClientContext):
     module_path: str
     resource: OCIStorageResource
     action: str = "update"
@@ -183,6 +199,7 @@ class UpdateOCIStorageRequest:
     def to_dict(self) -> Dict[str, Any]:
         """Retourne le contrat JSON OCI Storage Update attendu par Go."""
         return {
+            **self.context_dict(),
             "action": self.action,
             "provider": self.provider,
             "module": self.module,
@@ -197,7 +214,7 @@ class OCIStorageDeleteResource:
 
 
 @dataclass(frozen=True)
-class DeleteOCIStorageRequest:
+class DeleteOCIStorageRequest(ClientContext):
     module_path: str
     resource: OCIStorageDeleteResource
     action: str = "delete"
@@ -207,6 +224,7 @@ class DeleteOCIStorageRequest:
     def to_dict(self) -> Dict[str, Any]:
         """Retourne le contrat JSON minimal OCI Storage Delete attendu par Go."""
         return {
+            **self.context_dict(),
             "action": self.action,
             "provider": self.provider,
             "module": self.module,
@@ -263,7 +281,7 @@ class OCIIAMResource:
 
 
 @dataclass(frozen=True)
-class CreateOCIIAMRequest:
+class CreateOCIIAMRequest(ClientContext):
     module_path: str
     resource: OCIIAMResource
     action: str = "create"
@@ -273,6 +291,7 @@ class CreateOCIIAMRequest:
     def to_dict(self) -> Dict[str, Any]:
         """Retourne le contrat JSON OCI IAM Create attendu par Go."""
         return {
+            **self.context_dict(),
             "action": self.action,
             "provider": self.provider,
             "module": self.module,
@@ -282,7 +301,7 @@ class CreateOCIIAMRequest:
 
 
 @dataclass(frozen=True)
-class UpdateOCIIAMRequest:
+class UpdateOCIIAMRequest(ClientContext):
     module_path: str
     resource: OCIIAMResource
     action: str = "update"
@@ -292,6 +311,7 @@ class UpdateOCIIAMRequest:
     def to_dict(self) -> Dict[str, Any]:
         """Retourne le contrat JSON OCI IAM Update attendu par Go."""
         return {
+            **self.context_dict(),
             "action": self.action,
             "provider": self.provider,
             "module": self.module,
@@ -320,7 +340,7 @@ class OCIIAMDeleteResource:
 
 
 @dataclass(frozen=True)
-class DeleteOCIIAMRequest:
+class DeleteOCIIAMRequest(ClientContext):
     module_path: str
     resource: OCIIAMDeleteResource
     action: str = "delete"
@@ -330,6 +350,7 @@ class DeleteOCIIAMRequest:
     def to_dict(self) -> Dict[str, Any]:
         """Retourne le contrat JSON minimal OCI IAM Delete attendu par Go."""
         return {
+            **self.context_dict(),
             "action": self.action,
             "provider": self.provider,
             "module": self.module,
@@ -339,7 +360,7 @@ class DeleteOCIIAMRequest:
 
 
 @dataclass(frozen=True)
-class UpdateOCINetworkRequest:
+class UpdateOCINetworkRequest(ClientContext):
     module_path: str
     resource: OCINetworkResource
     action: str = "update"
@@ -349,6 +370,7 @@ class UpdateOCINetworkRequest:
     def to_dict(self) -> Dict[str, Any]:
         """Retourne le contrat JSON OCI Network Update attendu par Go."""
         return {
+            **self.context_dict(),
             "action": self.action,
             "provider": self.provider,
             "module": self.module,
@@ -366,7 +388,7 @@ class OCINetworkDeleteResource:
 
 
 @dataclass(frozen=True)
-class DeleteOCINetworkRequest:
+class DeleteOCINetworkRequest(ClientContext):
     module_path: str
     resource: OCINetworkDeleteResource
     action: str = "delete"
@@ -376,6 +398,7 @@ class DeleteOCINetworkRequest:
     def to_dict(self) -> Dict[str, Any]:
         """Retourne le contrat JSON minimal OCI Network Delete attendu par Go."""
         return {
+            **self.context_dict(),
             "action": self.action,
             "provider": self.provider,
             "module": self.module,
@@ -385,7 +408,7 @@ class DeleteOCINetworkRequest:
 
 
 @dataclass(frozen=True)
-class UpdateOCIComputeRequest:
+class UpdateOCIComputeRequest(ClientContext):
     module_path: str
     resource: OCIComputeResource
     action: str = "update"
@@ -395,6 +418,7 @@ class UpdateOCIComputeRequest:
     def to_dict(self) -> Dict[str, Any]:
         """Retourne le contrat JSON OCI Compute Update attendu par Go."""
         return {
+            **self.context_dict(),
             "action": self.action,
             "provider": self.provider,
             "module": self.module,
@@ -409,7 +433,7 @@ class OCIComputeDeleteResource:
 
 
 @dataclass(frozen=True)
-class DeleteOCIComputeRequest:
+class DeleteOCIComputeRequest(ClientContext):
     module_path: str
     resource: OCIComputeDeleteResource
     action: str = "delete"
@@ -419,6 +443,7 @@ class DeleteOCIComputeRequest:
     def to_dict(self) -> Dict[str, Any]:
         """Retourne le contrat JSON minimal OCI Compute Delete attendu par Go."""
         return {
+            **self.context_dict(),
             "action": self.action,
             "provider": self.provider,
             "module": self.module,
@@ -428,7 +453,7 @@ class DeleteOCIComputeRequest:
 
 
 @dataclass(frozen=True)
-class UpdateVMRequest:
+class UpdateVMRequest(ClientContext):
     module_path: str
     resource: VMResource
     project_id: str
@@ -439,6 +464,7 @@ class UpdateVMRequest:
     def to_dict(self) -> Dict[str, Any]:
         """Retourne le contrat JSON Compute Update attendu par le programme Go."""
         return {
+            **self.context_dict(),
             "action": self.action,
             "provider": self.provider,
             "module": self.module,
@@ -454,7 +480,7 @@ class ComputeDeleteResource:
 
 
 @dataclass(frozen=True)
-class DeleteVMRequest:
+class DeleteVMRequest(ClientContext):
     module_path: str
     resource: ComputeDeleteResource
     project_id: str = ""
@@ -465,6 +491,7 @@ class DeleteVMRequest:
     def to_dict(self) -> Dict[str, Any]:
         """Retourne le contrat JSON minimal Compute Delete attendu par Go."""
         return {
+            **self.context_dict(),
             "action": self.action,
             "provider": self.provider,
             "module": self.module,
@@ -485,7 +512,7 @@ class NetworkResource:
 
 
 @dataclass(frozen=True)
-class CreateNetworkRequest:
+class CreateNetworkRequest(ClientContext):
     module_path: str
     resource: NetworkResource
     project_id: str = ""
@@ -496,6 +523,7 @@ class CreateNetworkRequest:
     def to_dict(self) -> Dict[str, Any]:
         """Retourne le contrat JSON Network attendu par le programme Go."""
         return {
+            **self.context_dict(),
             "action": self.action,
             "provider": self.provider,
             "module": self.module,
@@ -506,7 +534,7 @@ class CreateNetworkRequest:
 
 
 @dataclass(frozen=True)
-class UpdateNetworkRequest:
+class UpdateNetworkRequest(ClientContext):
     module_path: str
     resource: NetworkResource
     project_id: str = ""
@@ -517,6 +545,7 @@ class UpdateNetworkRequest:
     def to_dict(self) -> Dict[str, Any]:
         """Retourne le contrat JSON Network Update attendu par Go."""
         return {
+            **self.context_dict(),
             "action": self.action,
             "provider": self.provider,
             "module": self.module,
@@ -533,7 +562,7 @@ class NetworkDeleteResource:
 
 
 @dataclass(frozen=True)
-class DeleteNetworkRequest:
+class DeleteNetworkRequest(ClientContext):
     module_path: str
     resource: NetworkDeleteResource
     project_id: str = ""
@@ -544,6 +573,7 @@ class DeleteNetworkRequest:
     def to_dict(self) -> Dict[str, Any]:
         """Retourne le contrat JSON minimal Network Delete attendu par Go."""
         return {
+            **self.context_dict(),
             "action": self.action,
             "provider": self.provider,
             "module": self.module,
@@ -570,7 +600,7 @@ class StorageResource:
 
 
 @dataclass(frozen=True)
-class CreateStorageRequest:
+class CreateStorageRequest(ClientContext):
     module_path: str
     resource: StorageResource
     project_id: str = ""
@@ -581,6 +611,7 @@ class CreateStorageRequest:
     def to_dict(self) -> Dict[str, Any]:
         """Retourne le contrat JSON Storage attendu par le programme Go."""
         return {
+            **self.context_dict(),
             "action": self.action,
             "provider": self.provider,
             "module": self.module,
@@ -591,7 +622,7 @@ class CreateStorageRequest:
 
 
 @dataclass(frozen=True)
-class UpdateStorageRequest:
+class UpdateStorageRequest(ClientContext):
     module_path: str
     resource: StorageResource
     project_id: str = ""
@@ -602,6 +633,7 @@ class UpdateStorageRequest:
     def to_dict(self) -> Dict[str, Any]:
         """Retourne le contrat JSON Storage Update attendu par Go."""
         return {
+            **self.context_dict(),
             "action": self.action,
             "provider": self.provider,
             "module": self.module,
@@ -617,7 +649,7 @@ class StorageDeleteResource:
 
 
 @dataclass(frozen=True)
-class DeleteStorageRequest:
+class DeleteStorageRequest(ClientContext):
     module_path: str
     resource: StorageDeleteResource
     project_id: str = ""
@@ -628,6 +660,7 @@ class DeleteStorageRequest:
     def to_dict(self) -> Dict[str, Any]:
         """Retourne le contrat JSON minimal Storage Delete attendu par Go."""
         return {
+            **self.context_dict(),
             "action": self.action,
             "provider": self.provider,
             "module": self.module,
@@ -648,7 +681,7 @@ class IAMResource:
 
 
 @dataclass(frozen=True)
-class CreateIAMRequest:
+class CreateIAMRequest(ClientContext):
     module_path: str
     resource: IAMResource
     project_id: str = ""
@@ -659,6 +692,7 @@ class CreateIAMRequest:
     def to_dict(self) -> Dict[str, Any]:
         """Retourne le contrat JSON IAM Create attendu par Go."""
         return {
+            **self.context_dict(),
             "action": self.action,
             "provider": self.provider,
             "module": self.module,
@@ -669,7 +703,7 @@ class CreateIAMRequest:
 
 
 @dataclass(frozen=True)
-class UpdateIAMRequest:
+class UpdateIAMRequest(ClientContext):
     module_path: str
     resource: IAMResource
     project_id: str = ""
@@ -680,6 +714,7 @@ class UpdateIAMRequest:
     def to_dict(self) -> Dict[str, Any]:
         """Retourne le contrat JSON IAM Update attendu par Go."""
         return {
+            **self.context_dict(),
             "action": self.action,
             "provider": self.provider,
             "module": self.module,
@@ -695,7 +730,7 @@ class IAMDeleteResource:
 
 
 @dataclass(frozen=True)
-class DeleteIAMRequest:
+class DeleteIAMRequest(ClientContext):
     module_path: str
     resource: IAMDeleteResource
     project_id: str = ""
@@ -706,6 +741,7 @@ class DeleteIAMRequest:
     def to_dict(self) -> Dict[str, Any]:
         """Retourne le contrat JSON minimal IAM Delete attendu par Go."""
         return {
+            **self.context_dict(),
             "action": self.action,
             "provider": self.provider,
             "module": self.module,

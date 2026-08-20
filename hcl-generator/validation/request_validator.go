@@ -3,9 +3,13 @@ package validation
 import (
 	"fmt"
 	"net"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
+	"hcl-generator/clientcontext"
+	"hcl-generator/clientpaths"
 	commonroot "hcl-generator/generator/common/rootmodule"
 	"hcl-generator/models"
 )
@@ -41,6 +45,14 @@ func ValidateRequest(request *models.Request) error {
 	if request == nil {
 		return fmt.Errorf("la demande est vide")
 	}
+	if request.ClientID != "" || request.Environment != "" {
+		if err := clientcontext.Validate(
+			request.ClientID,
+			request.Environment,
+		); err != nil {
+			return err
+		}
+	}
 
 	if request.Action != "create" &&
 		request.Action != "update" &&
@@ -51,7 +63,8 @@ func ValidateRequest(request *models.Request) error {
 		)
 	}
 
-	if strings.TrimSpace(request.ModulePath) == "" {
+	if strings.TrimSpace(request.ModulePath) == "" &&
+		!isClientAwareRoute(request) {
 		return fmt.Errorf("champ obligatoire manquant : module_path")
 	}
 
@@ -100,7 +113,7 @@ func validateGCPRequest(request *models.Request) error {
 		)
 	}
 
-	if err := validateModulePath(request.ModulePath, "gcp", request.Module); err != nil {
+	if err := validateRequestModulePath(request, "gcp", request.Module); err != nil {
 		return err
 	}
 
@@ -121,6 +134,46 @@ func validateGCPRequest(request *models.Request) error {
 	}
 }
 
+func isClientAwareRoute(request *models.Request) bool {
+	return request.ClientID != "" && request.Environment != "" &&
+		clientpaths.IsClientAwareRoute(
+			request.Provider,
+			request.Module,
+			request.Action,
+		)
+}
+
+func validateClientAwareModulePath(request *models.Request) error {
+	workingDirectory, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("repertoire de travail indisponible : %w", err)
+	}
+	projectRoot, err := clientpaths.ProjectRootFromWorkingDirectory(
+		workingDirectory,
+	)
+	if err != nil {
+		return err
+	}
+	layout, err := clientpaths.BuildClientModulePath(
+		projectRoot,
+		request.ClientID,
+		request.Environment,
+		request.Provider,
+		request.Module,
+	)
+	if err != nil {
+		return err
+	}
+	if request.ModulePath != "" &&
+		filepath.Clean(request.ModulePath) != filepath.Clean(layout.ModulePath) {
+		return fmt.Errorf(
+			"module_path arbitraire refuse; chemin calcule attendu : %s",
+			layout.ModulePath,
+		)
+	}
+	return nil
+}
+
 func validateOCIRequest(request *models.Request) error {
 	if request.Module == "iam" {
 		if request.Action != "create" &&
@@ -133,8 +186,8 @@ func validateOCIRequest(request *models.Request) error {
 				request.Action,
 			)
 		}
-		if err := validateModulePath(
-			request.ModulePath,
+		if err := validateRequestModulePath(
+			request,
 			"oci",
 			"iam",
 		); err != nil {
@@ -157,8 +210,8 @@ func validateOCIRequest(request *models.Request) error {
 				request.Action,
 			)
 		}
-		if err := validateModulePath(
-			request.ModulePath,
+		if err := validateRequestModulePath(
+			request,
 			"oci",
 			"storage",
 		); err != nil {
@@ -171,8 +224,8 @@ func validateOCIRequest(request *models.Request) error {
 	}
 
 	if request.Module == "network" {
-		if err := validateModulePath(
-			request.ModulePath,
+		if err := validateRequestModulePath(
+			request,
 			"oci",
 			"network",
 		); err != nil {
@@ -204,7 +257,7 @@ func validateOCIRequest(request *models.Request) error {
 			request.Action,
 		)
 	}
-	if err := validateModulePath(request.ModulePath, "oci", "compute"); err != nil {
+	if err := validateRequestModulePath(request, "oci", "compute"); err != nil {
 		return err
 	}
 
@@ -714,6 +767,17 @@ func validateModulePath(
 ) error {
 	_, err := commonroot.ResolveModulePath(modulePath, provider, module)
 	return err
+}
+
+func validateRequestModulePath(
+	request *models.Request,
+	provider string,
+	module string,
+) error {
+	if isClientAwareRoute(request) {
+		return validateClientAwareModulePath(request)
+	}
+	return validateModulePath(request.ModulePath, provider, module)
 }
 
 func validateIAMRequest(request *models.Request) error {

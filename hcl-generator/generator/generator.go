@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"hcl-generator/clientpaths"
 	"hcl-generator/generator/common"
 	commonroot "hcl-generator/generator/common/rootmodule"
 	gcpcompute "hcl-generator/generator/gcp/compute"
@@ -75,11 +76,7 @@ func GenerateAtomically(
 		)
 	}
 
-	layout, err := commonroot.ResolveModulePath(
-		request.ModulePath,
-		request.Provider,
-		request.Module,
-	)
+	layout, err := resolveModuleLayout(request)
 	if err != nil {
 		return err
 	}
@@ -162,6 +159,49 @@ func GenerateAtomically(
 		)
 	}
 	return common.CommitFilePathsAtomically(modulePrepared)
+}
+
+func resolveModuleLayout(request *models.Request) (commonroot.ModuleLayout, error) {
+	if clientpaths.IsClientAwareRoute(
+		request.Provider,
+		request.Module,
+		request.Action,
+	) && request.ClientID != "" && request.Environment != "" {
+		workingDirectory, err := os.Getwd()
+		if err != nil {
+			return commonroot.ModuleLayout{}, fmt.Errorf(
+				"impossible de determiner le repertoire de travail : %w",
+				err,
+			)
+		}
+		projectRoot, err := clientpaths.ProjectRootFromWorkingDirectory(
+			workingDirectory,
+		)
+		if err != nil {
+			return commonroot.ModuleLayout{}, err
+		}
+		clientLayout, err := clientpaths.BuildClientModulePath(
+			projectRoot,
+			request.ClientID,
+			request.Environment,
+			request.Provider,
+			request.Module,
+		)
+		if err != nil {
+			return commonroot.ModuleLayout{}, err
+		}
+		request.ModulePath = clientLayout.ModulePath
+		return commonroot.ModuleLayout{
+			ProviderRoot: clientLayout.ProviderRoot,
+			ModulesRoot:  clientLayout.ModulesRoot,
+			ModulePath:   clientLayout.ModulePath,
+		}, nil
+	}
+	return commonroot.ResolveModulePath(
+		request.ModulePath,
+		request.Provider,
+		request.Module,
+	)
 }
 
 func writeGCPProjectContext(file *hclwrite.File, projectID string) {

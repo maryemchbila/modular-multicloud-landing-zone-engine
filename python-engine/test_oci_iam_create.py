@@ -59,7 +59,7 @@ class OCIIAMCreateTests(unittest.TestCase):
         validate_request(request)
 
     @patch("app.create_oci_iam")
-    @patch("builtins.input", side_effect=["2", "4", "1"])
+    @patch("builtins.input", side_effect=["2", "example-client", "dev", "4", "1"])
     def test_menu_choices_2_4_1_launch_create(
         self,
         _input_mock,

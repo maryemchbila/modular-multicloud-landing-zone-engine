@@ -55,7 +55,7 @@ class OCINetworkUpdateTests(unittest.TestCase):
         update_mock.assert_called_once_with()
 
     @patch("app.update_oci_network")
-    @patch("builtins.input", side_effect=["2", "2", "2"])
+    @patch("builtins.input", side_effect=["2", "example-client", "dev", "2", "2"])
     def test_menu_choices_2_2_2_launch_update(
         self,
         _input_mock,
