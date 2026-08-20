@@ -114,6 +114,8 @@ class GCPProjectContextTests(unittest.TestCase):
                     environment="dev",
                 ),
             ), patch(
+                "app.load_client_runtime", return_value=None
+            ), patch(
                 "app.ask_gcp_context",
                 side_effect=lambda: events.append("context") or context,
             ) as context_mock, patch(
@@ -151,6 +153,7 @@ class GCPProjectContextTests(unittest.TestCase):
                 f"Projet GCP cible : {self.PROJECT_ID}",
                 output.getvalue(),
             )
+            self.assertIn("LEGACY_MANUAL_MODE", output.getvalue())
 
     def test_iam_resource_project_matches_shared_context(self) -> None:
         with redirect_stdout(io.StringIO()):

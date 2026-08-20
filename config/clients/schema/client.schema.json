@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/client.schema.json",
+  "title": "Non-sensitive multi-cloud client configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "client",
+    "environments",
+    "clouds",
+    "credential_profiles",
+    "state",
+    "state_profiles",
+    "security",
+    "governance"
+  ],
+  "properties": {
+    "client": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"},
+        "name": {"type": "string", "minLength": 1}
+      }
+    },
+    "environments": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "dev": {"$ref": "#/$defs/environment"},
+        "staging": {"$ref": "#/$defs/environment"},
+        "prod": {"$ref": "#/$defs/environment"}
+      }
+    },
+    "clouds": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "gcp": {"$ref": "#/$defs/gcp"},
+        "oci": {"$ref": "#/$defs/oci"}
+      }
+    },
+    "credential_profiles": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/credentialProfile"}
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "backend_profile"],
+      "properties": {
+        "mode": {"enum": ["local", "remote"]},
+        "backend_profile": {
+          "oneOf": [
+            {"type": "string", "minLength": 1},
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "gcp": {"type": "string", "minLength": 1},
+                "oci": {"type": "string", "minLength": 1}
+              }
+            }
+          ]
+        }
+      }
+    },
+    "state_profiles": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/stateProfile"}
+    },
+    "security": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile"],
+      "properties": {"profile": {"type": "string", "minLength": 1}}
+    },
+    "governance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["apply_requires_approval", "destroy_requires_approval", "production_destroy_enabled"],
+      "properties": {
+        "apply_requires_approval": {"type": "boolean"},
+        "destroy_requires_approval": {"type": "boolean"},
+        "production_destroy_enabled": {"type": "boolean"}
+      }
+    }
+  },
+  "$defs": {
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {"enabled": {"type": "boolean"}}
+    },
+    "gcp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "project_id", "default_region", "credential_profile"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "project_id": {"type": "string", "minLength": 1},
+        "default_region": {"type": "string", "minLength": 1},
+        "default_zone": {"type": "string", "minLength": 1},
+        "credential_profile": {"type": "string", "minLength": 1}
+      }
+    },
+    "oci": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "region", "compartment_ocid", "credential_profile"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "region": {"type": "string", "minLength": 1},
+        "compartment_ocid": {"type": "string", "minLength": 1},
+        "credential_profile": {"type": "string", "minLength": 1}
+      }
+    },
+    "credentialProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "auth_mode", "source_type", "reference"],
+      "properties": {
+        "provider": {"enum": ["gcp", "oci"]},
+        "auth_mode": {"enum": ["ADC", "SERVICE_ACCOUNT_FILE", "WIF_REFERENCE", "API_KEY_PROFILE", "INSTANCE_PRINCIPAL", "SECURITY_TOKEN_PROFILE"]},
+        "source_type": {"enum": ["ENVIRONMENT", "FILE_REFERENCE", "OS_PROFILE", "EPHEMERAL_SESSION"]},
+        "reference": {"type": "string"},
+        "profile_name": {"type": "string", "minLength": 1},
+        "metadata": {"type": "object"}
+      }
+    },
+    "stateProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "backend_type"],
+      "properties": {
+        "provider": {"enum": ["gcp", "oci"]},
+        "backend_type": {"enum": ["gcs", "oci", "local"]},
+        "bucket": {"type": "string", "minLength": 1},
+        "region": {"type": "string", "minLength": 1},
+        "namespace": {"type": "string", "minLength": 1},
+        "credential_profile": {"type": "string", "minLength": 1},
+        "locking_expected": {"type": "boolean"},
+        "versioning_expected": {"type": "boolean"}
+      }
+    }
+  }
+}

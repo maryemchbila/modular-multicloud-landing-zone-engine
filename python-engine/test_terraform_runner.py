@@ -166,6 +166,31 @@ class TerraformRunnerTests(unittest.TestCase):
 
     @patch("terraform_runner.subprocess.run")
     @patch("terraform_runner.shutil.which", return_value=TERRAFORM_BINARY)
+    def test_env_overrides_are_child_only_and_cannot_disable_automation(
+        self, _which_mock, run_mock
+    ) -> None:
+        run_mock.return_value = subprocess.CompletedProcess([], 0, "", "")
+        variable = "J2_FAKE_RUNTIME_CREDENTIAL"
+        self.assertNotIn(variable, os.environ)
+
+        self.runner.run(
+            ["version"],
+            self.cwd,
+            env_overrides={
+                variable: "runtime-only",
+                "TF_INPUT": "1",
+                "TF_IN_AUTOMATION": "0",
+            },
+        )
+
+        self.assertNotIn(variable, os.environ)
+        child_environment = run_mock.call_args.kwargs["env"]
+        self.assertEqual(child_environment[variable], "runtime-only")
+        self.assertEqual(child_environment["TF_INPUT"], "0")
+        self.assertEqual(child_environment["TF_IN_AUTOMATION"], "1")
+
+    @patch("terraform_runner.subprocess.run")
+    @patch("terraform_runner.shutil.which", return_value=TERRAFORM_BINARY)
     def test_explicit_cwd_timeout_and_noninteractive_stdin(
         self, _which_mock, run_mock
     ) -> None:
