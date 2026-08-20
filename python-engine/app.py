@@ -3,12 +3,15 @@
 import json
 import sys
 from collections.abc import Callable
+from contextvars import ContextVar
 from datetime import datetime
 from pathlib import Path
 
 from app_governance import run_governance_after_generation
+from client_context import ClientContextError, validate_client_context
+from client_paths import build_client_module_path
 from go_client import GoClientError, run_generator
-from models import GCPContext
+from models import ClientContext, GCPContext
 from request_builder import (
     ask_gcp_context,
     ask_gcp_compute_delete_parameters,
@@ -40,6 +43,10 @@ from validators import ValidationError, validate_request
 
 
 REQUEST_DIRECTORY = Path(__file__).resolve().parent / "generated_requests"
+ACTIVE_CLIENT_CONTEXT: ContextVar[ClientContext | None] = ContextVar(
+    "active_client_context",
+    default=None,
+)
 
 
 def _choose_option(prompt: str, options: dict[str, str], error_message: str) -> str:
@@ -55,6 +62,16 @@ def choose_provider() -> str:
     print("1 - GCP")
     print("2 - OCI")
     return _choose_option("Votre choix : ", {"1": "gcp", "2": "oci"}, "Choix provider invalide")
+
+
+def ask_client_context() -> ClientContext:
+    client_id = input("Client ID : ").strip()
+    environment = input("Environment (dev/staging/prod) : ").strip()
+    try:
+        validate_client_context(client_id, environment)
+    except ClientContextError as exc:
+        raise ValueError(str(exc)) from exc
+    return ClientContext(client_id=client_id, environment=environment)
 
 
 def choose_module() -> str:
@@ -96,6 +113,18 @@ def save_request(payload: dict) -> Path:
 
 
 def _generate(payload: dict) -> bool:
+    client_context = ACTIVE_CLIENT_CONTEXT.get()
+    if client_context is not None:
+        payload = dict(payload)
+        payload.update(client_context.context_dict())
+        payload["module_path"] = str(
+            build_client_module_path(
+                client_context.client_id,
+                client_context.environment,
+                payload["provider"],
+                payload["module"],
+            )
+        )
     request_path = save_request(payload)
     print(f"\nRequete valide sauvegardee : {request_path}")
     print("Appel du generateur Go...")
@@ -106,7 +135,10 @@ def _generate(payload: dict) -> bool:
 
 
 def create_gcp_compute(*, gcp_context: GCPContext | None = None) -> bool:
-    request = build_request(gcp_context=gcp_context)
+    request = build_request(
+        gcp_context=gcp_context,
+        prompt_module_path=ACTIVE_CLIENT_CONTEXT.get() is None,
+    )
     validate_request(request)
     return _generate(request.to_dict())
 
@@ -323,13 +355,19 @@ def delete_oci_compute(input_fn=input) -> bool:
 
 
 def create_gcp_network(*, gcp_context: GCPContext | None = None) -> bool:
-    request = ask_gcp_network_parameters(gcp_context=gcp_context)
+    request = ask_gcp_network_parameters(
+        gcp_context=gcp_context,
+        prompt_module_path=ACTIVE_CLIENT_CONTEXT.get() is None,
+    )
     validate_request(request)
     return _generate(request.to_dict())
 
 
 def update_gcp_compute(*, gcp_context: GCPContext | None = None) -> bool:
-    request = ask_gcp_compute_update_parameters(gcp_context=gcp_context)
+    request = ask_gcp_compute_update_parameters(
+        gcp_context=gcp_context,
+        prompt_module_path=ACTIVE_CLIENT_CONTEXT.get() is None,
+    )
     validate_request(request)
     return _generate(request.to_dict())
 
@@ -357,7 +395,10 @@ def delete_gcp_compute(
 
 
 def update_gcp_network(*, gcp_context: GCPContext | None = None) -> bool:
-    request = ask_gcp_network_update_parameters(gcp_context=gcp_context)
+    request = ask_gcp_network_update_parameters(
+        gcp_context=gcp_context,
+        prompt_module_path=ACTIVE_CLIENT_CONTEXT.get() is None,
+    )
     validate_request(request)
     return _generate(request.to_dict())
 
@@ -390,7 +431,10 @@ def delete_gcp_network(
 
 
 def create_gcp_storage(*, gcp_context: GCPContext | None = None) -> bool:
-    request = ask_gcp_storage_parameters(gcp_context=gcp_context)
+    request = ask_gcp_storage_parameters(
+        gcp_context=gcp_context,
+        prompt_module_path=ACTIVE_CLIENT_CONTEXT.get() is None,
+    )
     validate_request(request)
     return _generate(request.to_dict())
 
@@ -434,7 +478,10 @@ def delete_gcp_iam(
 
 
 def update_gcp_storage(*, gcp_context: GCPContext | None = None) -> bool:
-    request = ask_gcp_storage_update_parameters(gcp_context=gcp_context)
+    request = ask_gcp_storage_update_parameters(
+        gcp_context=gcp_context,
+        prompt_module_path=ACTIVE_CLIENT_CONTEXT.get() is None,
+    )
     validate_request(request)
     return _generate(request.to_dict())
 
@@ -512,18 +559,23 @@ def main() -> int:
         print(" Multi-Cloud Automation Engine")
         print("===============================\n")
         provider = choose_provider()
+        client_context = ask_client_context()
         gcp_context = None
         if provider == "gcp":
             gcp_context = ask_gcp_context()
             print(f"\nProjet GCP cible : {gcp_context.project_id}")
         module = choose_module()
         action = choose_action()
-        generation_succeeded = dispatch(
-            provider,
-            module,
-            action,
-            gcp_context=gcp_context,
-        )
+        context_token = ACTIVE_CLIENT_CONTEXT.set(client_context)
+        try:
+            generation_succeeded = dispatch(
+                provider,
+                module,
+                action,
+                gcp_context=gcp_context,
+            )
+        finally:
+            ACTIVE_CLIENT_CONTEXT.reset(context_token)
         if generation_succeeded is not True:
             print("\nGeneration : NOT_RUN")
             print("Governance : NOT_RUN")

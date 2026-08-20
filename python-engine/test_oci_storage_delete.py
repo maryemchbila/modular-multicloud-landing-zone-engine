@@ -41,7 +41,7 @@ class OCIStorageDeleteTests(unittest.TestCase):
         delete_mock.assert_called_once_with()
 
     @patch("app.delete_oci_storage")
-    @patch("builtins.input", side_effect=["2", "3", "3"])
+    @patch("builtins.input", side_effect=["2", "example-client", "dev", "3", "3"])
     def test_menu_choices_2_3_3_launch_delete(
         self,
         _input_mock,

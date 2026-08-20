@@ -111,6 +111,7 @@ def build_request(
     input_fn: InputFunction = input,
     *,
     gcp_context: GCPContext | None = None,
+    prompt_module_path: bool = True,
 ) -> CreateVMRequest:
     default_module_path = str(GCP_COMPUTE_OUTPUT.resolve())
 
@@ -124,7 +125,9 @@ def build_request(
         image=_ask("Image", "debian-cloud/debian-12", input_fn),
         network=_ask("Reseau", "default", input_fn),
     )
-    module_path = _ask("Dossier Terraform cible", default_module_path, input_fn)
+    module_path = default_module_path
+    if prompt_module_path:
+        module_path = _ask("Dossier Terraform cible", default_module_path, input_fn)
     return CreateVMRequest(
         module_path=module_path,
         resource=resource,
@@ -807,6 +810,7 @@ def ask_gcp_compute_update_parameters(
     input_fn: InputFunction = input,
     *,
     gcp_context: GCPContext | None = None,
+    prompt_module_path: bool = True,
 ) -> UpdateVMRequest:
     default_module_path = str(GCP_COMPUTE_OUTPUT.resolve())
 
@@ -824,7 +828,9 @@ def ask_gcp_compute_update_parameters(
         image=_ask("Image", "debian-cloud/debian-12", input_fn),
         network=_ask("Network", "default", input_fn),
     )
-    module_path = _ask("Dossier Terraform cible", default_module_path, input_fn)
+    module_path = default_module_path
+    if prompt_module_path:
+        module_path = _ask("Dossier Terraform cible", default_module_path, input_fn)
     return UpdateVMRequest(
         module_path=module_path,
         resource=resource,
@@ -857,6 +863,7 @@ def ask_gcp_network_parameters(
     input_fn: InputFunction = input,
     *,
     gcp_context: GCPContext | None = None,
+    prompt_module_path: bool = True,
 ) -> CreateNetworkRequest:
     default_module_path = str(GCP_NETWORK_OUTPUT.resolve())
 
@@ -874,7 +881,9 @@ def ask_gcp_network_parameters(
         cidr=_ask("CIDR", "10.10.0.0/24", input_fn),
         region=_ask("Region", "europe-west1", input_fn),
     )
-    module_path = _ask("Dossier Terraform cible", default_module_path, input_fn)
+    module_path = default_module_path
+    if prompt_module_path:
+        module_path = _ask("Dossier Terraform cible", default_module_path, input_fn)
     return CreateNetworkRequest(
         module_path=module_path,
         resource=resource,
@@ -886,6 +895,7 @@ def ask_gcp_network_update_parameters(
     input_fn: InputFunction = input,
     *,
     gcp_context: GCPContext | None = None,
+    prompt_module_path: bool = True,
 ) -> UpdateNetworkRequest:
     default_module_path = str(GCP_NETWORK_OUTPUT.resolve())
 
@@ -911,7 +921,9 @@ def ask_gcp_network_update_parameters(
         cidr=_ask("Nouveau CIDR", "10.81.0.0/24", input_fn),
         region=_ask("Region", "europe-west1", input_fn),
     )
-    module_path = _ask("Dossier Terraform cible", default_module_path, input_fn)
+    module_path = default_module_path
+    if prompt_module_path:
+        module_path = _ask("Dossier Terraform cible", default_module_path, input_fn)
     return UpdateNetworkRequest(
         module_path=module_path,
         resource=resource,
@@ -949,6 +961,7 @@ def ask_gcp_storage_parameters(
     input_fn: InputFunction = input,
     *,
     gcp_context: GCPContext | None = None,
+    prompt_module_path: bool = True,
 ) -> CreateStorageRequest:
     default_module_path = str(GCP_STORAGE_OUTPUT.resolve())
 
@@ -965,7 +978,9 @@ def ask_gcp_storage_parameters(
             "Uniform bucket level access", True, input_fn
         ),
     )
-    module_path = _ask("Dossier Terraform cible", default_module_path, input_fn)
+    module_path = default_module_path
+    if prompt_module_path:
+        module_path = _ask("Dossier Terraform cible", default_module_path, input_fn)
     return CreateStorageRequest(
         module_path=module_path,
         resource=resource,
@@ -977,6 +992,7 @@ def ask_gcp_storage_update_parameters(
     input_fn: InputFunction = input,
     *,
     gcp_context: GCPContext | None = None,
+    prompt_module_path: bool = True,
 ) -> UpdateStorageRequest:
     default_module_path = str(GCP_STORAGE_OUTPUT.resolve())
 
@@ -1001,7 +1017,9 @@ def ask_gcp_storage_update_parameters(
             input_fn,
         ),
     )
-    module_path = _ask("Dossier Terraform cible", default_module_path, input_fn)
+    module_path = default_module_path
+    if prompt_module_path:
+        module_path = _ask("Dossier Terraform cible", default_module_path, input_fn)
     return UpdateStorageRequest(
         module_path=module_path,
         resource=resource,

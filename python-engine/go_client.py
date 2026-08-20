@@ -23,12 +23,18 @@ def run_generator(request_path: Path) -> str:
         result = subprocess.run(
             [str(executable), str(request_path.resolve())],
             cwd=str(go_directory),
+            stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
             encoding="utf-8",
             errors="replace",
             check=False,
+            timeout=30,
         )
+    except subprocess.TimeoutExpired as exc:
+        raise GoClientError(
+            "Le generateur Go n'a pas termine dans le delai de 30 secondes"
+        ) from exc
     except OSError as exc:
         raise GoClientError(f"Impossible de lancer le generateur Go : {exc}") from exc
 

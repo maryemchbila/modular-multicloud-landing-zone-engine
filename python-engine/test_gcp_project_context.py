@@ -7,7 +7,7 @@ from contextlib import redirect_stdout
 from unittest.mock import patch
 
 import app
-from models import GCPContext
+from models import ClientContext, GCPContext
 from request_builder import (
     ask_gcp_compute_delete_parameters,
     ask_gcp_compute_update_parameters,
@@ -107,6 +107,13 @@ class GCPProjectContextTests(unittest.TestCase):
                 "app.choose_provider",
                 side_effect=lambda: events.append("provider") or "gcp",
             ), patch(
+                "app.ask_client_context",
+                side_effect=lambda: events.append("client_context")
+                or ClientContext(
+                    client_id="example-client",
+                    environment="dev",
+                ),
+            ), patch(
                 "app.ask_gcp_context",
                 side_effect=lambda: events.append("context") or context,
             ) as context_mock, patch(
@@ -131,7 +138,14 @@ class GCPProjectContextTests(unittest.TestCase):
             )
             self.assertEqual(
                 events,
-                ["provider", "context", "module", "action", "dispatch"],
+                [
+                    "provider",
+                    "client_context",
+                    "context",
+                    "module",
+                    "action",
+                    "dispatch",
+                ],
             )
             self.assertIn(
                 f"Projet GCP cible : {self.PROJECT_ID}",

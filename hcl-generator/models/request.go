@@ -8,6 +8,8 @@ import (
 
 type Request struct {
 	Action             string             `json:"action"`
+	ClientID           string             `json:"client_id"`
+	Environment        string             `json:"environment"`
 	Provider           string             `json:"provider"`
 	Module             string             `json:"module"`
 	ModulePath         string             `json:"module_path"`

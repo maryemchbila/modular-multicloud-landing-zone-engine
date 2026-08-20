@@ -41,7 +41,7 @@ class OCIStorageCreateTests(unittest.TestCase):
         validate_request(request)
 
     @patch("app.create_oci_storage")
-    @patch("builtins.input", side_effect=["2", "3", "1"])
+    @patch("builtins.input", side_effect=["2", "example-client", "dev", "3", "1"])
     def test_menu_choices_2_3_1_launch_create(
         self,
         _input_mock,

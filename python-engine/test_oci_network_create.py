@@ -61,7 +61,7 @@ class OCINetworkCreateTests(unittest.TestCase):
         create_mock.assert_called_once_with()
 
     @patch("app.create_oci_network")
-    @patch("builtins.input", side_effect=["2", "2", "1"])
+    @patch("builtins.input", side_effect=["2", "example-client", "dev", "2", "1"])
     def test_menu_choices_2_2_1_launch_create(
         self,
         _input_mock,

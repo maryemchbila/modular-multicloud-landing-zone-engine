@@ -42,7 +42,7 @@ class OCIIAMDeleteTests(unittest.TestCase):
         validate_request(request)
 
     @patch("app.delete_oci_iam")
-    @patch("builtins.input", side_effect=["2", "4", "3"])
+    @patch("builtins.input", side_effect=["2", "example-client", "dev", "4", "3"])
     def test_menu_choices_2_4_3_launch_delete(
         self,
         _input_mock,
