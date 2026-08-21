@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="heading"><div><p class="eyebrow">Sanitized artifacts</p><h1>{{ page_title }}</h1></div></div>
+{% if report %}<section class="panel"><h2>{{ report_type|title }} report</h2><pre>{{ report|tojson(indent=2) }}</pre></section>
+{% else %}<section class="panel"><div class="table-wrap"><table><thead><tr><th>Timestamp</th><th>Client</th><th>Environment</th><th>Provider</th><th>Type</th><th>Status</th><th></th></tr></thead><tbody>
+{% for item in reports %}<tr><td>{{ item.timestamp }}</td><td>{{ runtime.client_id if runtime else 'Not configured' }}</td><td>{{ runtime.environment if runtime else 'Not configured' }}</td><td>{{ item.provider }}</td><td>{{ item.type|title }}</td><td>{{ item.status }}</td><td><a href="{{ url_for('web.report_view', report_type=item.type, report_id=item.id) }}">View</a></td></tr>{% else %}<tr><td colspan="7">No reports available.</td></tr>{% endfor %}
+</tbody></table></div></section>{% endif %}
+{% endblock %}

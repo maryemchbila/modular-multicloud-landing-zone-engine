@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="heading"><div><p class="eyebrow">Runtime context</p><h1>Client &amp; Cloud</h1></div></div>
+<section class="panel">
+  <form method="post" class="form-grid">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Client ID<input name="client_id" required pattern="[a-z0-9][a-z0-9-]{1,62}[a-z0-9]" value="{{ runtime.client_id if runtime else 'example-client' }}"></label>
+    <label>Environment<select name="environment" required>{% for item in ['dev','staging','prod'] %}<option value="{{ item }}" {% if runtime and runtime.environment == item %}selected{% endif %}>{{ item|upper }}</option>{% endfor %}</select></label>
+    <label>Provider<select name="provider" required>{% for item in ['gcp','oci'] %}<option value="{{ item }}" {% if runtime and runtime.provider == item %}selected{% endif %}>{{ item|upper }}</option>{% endfor %}</select></label>
+    <div class="form-action"><button type="submit">Load safe configuration</button></div>
+  </form>
+</section>
+{% if runtime %}
+<section class="panel"><h2>Safe client cloud runtime</h2>
+  <dl class="facts">
+    {% for label, value in [
+      ('Client', runtime.client_id), ('Environment', runtime.environment), ('Provider', runtime.provider),
+      (runtime.target_label, runtime.cloud_target), ('Region', runtime.region), ('Zone', runtime.zone or 'N/A'),
+      ('Credential Profile', runtime.credential_profile_id), ('Credential Mode', runtime.credential_mode),
+      ('Credential Status', runtime.credential_status), ('State Profile', runtime.state_profile_id),
+      ('State Mode', runtime.state_mode), ('Backend Type', runtime.backend_type), ('State Identity', runtime.state_identity)
+    ] %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{% endfor %}
+  </dl>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page_title }} · Multi-Cloud Landing Zone</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="{{ url_for('web.dashboard') }}">Modular Multi-Cloud Landing Zone Automation Engine</a>
+    <span class="local">LOCAL · PLAN ONLY</span>
+  </header>
+  <div class="shell">
+    <nav aria-label="Main navigation">
+      <a href="{{ url_for('web.dashboard') }}">Dashboard</a>
+      <a href="{{ url_for('web.client') }}">Client &amp; Cloud</a>
+      <a href="{{ url_for('web.infrastructure') }}">Infrastructure</a>
+      <a href="{{ url_for('web.plan') }}">Plan</a>
+      <a href="{{ url_for('web.security') }}">Security</a>
+      <a href="{{ url_for('web.governance') }}">Governance</a>
+      <a href="{{ url_for('web.reports') }}">Reports</a>
+    </nav>
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</body>
+</html>

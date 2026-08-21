@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="heading"><div><p class="eyebrow">Versioned catalog</p><h1>Infrastructure</h1></div></div>
+{% if not runtime %}
+<section class="notice">Configure <a href="{{ url_for('web.client') }}">Client &amp; Cloud</a> before generating infrastructure.</section>
+{% endif %}
+<section class="panel">
+  <label>Template
+    <select onchange="location.href='{{ url_for('web.infrastructure') }}?template_id='+encodeURIComponent(this.value)">
+      {% for template in templates %}<option value="{{ template.template_id }}" {% if selected and selected.template_id == template.template_id %}selected{% endif %}>{{ template.name }}</option>{% endfor %}
+    </select>
+  </label>
+  {% if selected %}<p class="muted">{{ selected.description }}</p><p><strong>Module:</strong> {{ selected.module }}</p>{% endif %}
+</section>
+{% if selected and runtime %}
+<section class="panel"><h2>Parameters</h2>
+  <form method="post" class="form-grid">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="template_id" value="{{ selected.template_id }}">
+    {% for name in selected.parameter_names %}
+      {% set default = selected.defaults.get(name, selected.security_defaults.get(name, '')) %}
+      <label>{{ name|replace('_',' ')|title }}{% if default is boolean %}
+        <select name="{{ name }}"><option value="true" {% if default %}selected{% endif %}>True</option><option value="false" {% if not default %}selected{% endif %}>False</option></select>
+      {% else %}<input name="{{ name }}" value="{{ default }}" {% if name in selected.required_parameters %}required{% endif %}>{% endif %}</label>
+    {% endfor %}
+    <div class="form-action"><button type="submit">Generate &amp; Validate</button><small>Generate → fmt → init → validate → plan → Security → Policy → Approval → Governance</small></div>
+  </form>
+</section>
+{% endif %}
+<section class="safety"><strong>Safety:</strong> Apply and Destroy are unavailable in J3.</section>
+{% endblock %}

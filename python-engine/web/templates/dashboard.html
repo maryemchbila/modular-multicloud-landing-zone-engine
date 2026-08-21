@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="heading">
+  <div><p class="eyebrow">J3 control plane</p><h1>Dashboard</h1></div>
+  <a class="button" href="{{ url_for('web.client') }}">Configure client</a>
+</div>
+{% set not_configured = 'Not configured' %}
+<section class="cards">
+  {% for title, value in [
+    ('Client', runtime.client_id if runtime else not_configured),
+    ('Environment', runtime.environment|upper if runtime else not_configured),
+    ('Cloud', runtime.provider|upper if runtime else not_configured),
+    ('Credentials', runtime.credential_status if runtime else not_configured),
+    ('Infrastructure', result.template if result else not_configured),
+    ('Terraform', result.terraform_status if result else not_configured),
+    ('Security', result.security_status if result else not_configured),
+    ('Governance', result.governance_status if result else not_configured)
+  ] %}
+  <article class="card"><span>{{ title }}</span><strong class="status status-{{ value|lower|replace('_','-') }}">{{ value }}</strong></article>
+  {% endfor %}
+</section>
+{% if result %}
+<section class="panel"><h2>Latest governed workflow</h2>
+  <dl class="facts">
+    <div><dt>Policy decision</dt><dd>{{ result.policy_decision }}</dd></div>
+    <div><dt>State mode</dt><dd>{{ runtime.state_mode }}</dd></div>
+    <div><dt>Apply</dt><dd>NOT EXECUTED</dd></div>
+    <div><dt>Destroy</dt><dd>NOT EXECUTED</dd></div>
+  </dl>
+</section>
+{% endif %}
+{% endblock %}

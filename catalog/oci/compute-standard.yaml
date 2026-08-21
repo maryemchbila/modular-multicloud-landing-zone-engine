@@ -1,0 +1,12 @@
+template_id: oci-compute-standard
+provider: oci
+module: compute
+name: OCI Compute Standard
+description: OCI instance request with no public IP by default.
+defaults:
+  assign_public_ip: false
+optional_parameters: [assign_public_ip]
+required_parameters: [resource_name, display_name, availability_domain, shape, subnet_id, image_id]
+security_defaults:
+  assign_public_ip: false
+components: []

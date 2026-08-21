@@ -1,0 +1,28 @@
+template_id: oci-landing-zone-standard
+provider: oci
+module: landing-zone
+name: OCI Landing Zone Standard
+description: Ordered Network, Storage, IAM and Compute requests using existing modules.
+defaults:
+  network_prohibit_public_ip_on_vnic: true
+  storage_access_type: NoPublicAccess
+  storage_storage_tier: Standard
+  storage_versioning: Enabled
+  storage_object_events_enabled: true
+  compute_assign_public_ip: false
+optional_parameters: [network_prohibit_public_ip_on_vnic, storage_access_type, storage_storage_tier, storage_versioning, storage_object_events_enabled, compute_assign_public_ip]
+required_parameters: [network_resource_name, network_display_name, network_vcn_cidr, network_dns_label, network_subnet_resource_name, network_subnet_display_name, network_subnet_cidr, network_subnet_dns_label, network_availability_domain, network_internet_gateway_resource_name, network_internet_gateway_display_name, network_route_table_resource_name, network_route_table_display_name, storage_resource_name, storage_namespace, storage_name, iam_tenancy_ocid, iam_user_resource_name, iam_user_name, iam_user_description, iam_group_resource_name, iam_group_name, iam_group_description, iam_membership_resource_name, iam_policy_resource_name, iam_policy_name, iam_policy_description, iam_policy_statements, compute_resource_name, compute_display_name, compute_availability_domain, compute_shape, compute_subnet_id, compute_image_id]
+security_defaults:
+  network_prohibit_public_ip_on_vnic: true
+  storage_access_type: NoPublicAccess
+  storage_versioning: Enabled
+  compute_assign_public_ip: false
+components:
+  - template_id: oci-network-standard
+    parameter_prefix: network_
+  - template_id: oci-storage-standard
+    parameter_prefix: storage_
+  - template_id: oci-iam-standard
+    parameter_prefix: iam_
+  - template_id: oci-compute-standard
+    parameter_prefix: compute_

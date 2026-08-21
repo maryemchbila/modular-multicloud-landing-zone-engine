@@ -1,0 +1,12 @@
+template_id: oci-network-standard
+provider: oci
+module: network
+name: OCI Network Standard
+description: OCI VCN and subnet request prohibiting public IPs on VNICs.
+defaults:
+  prohibit_public_ip_on_vnic: true
+optional_parameters: [prohibit_public_ip_on_vnic]
+required_parameters: [resource_name, display_name, vcn_cidr, dns_label, subnet_resource_name, subnet_display_name, subnet_cidr, subnet_dns_label, availability_domain, internet_gateway_resource_name, internet_gateway_display_name, route_table_resource_name, route_table_display_name]
+security_defaults:
+  prohibit_public_ip_on_vnic: true
+components: []

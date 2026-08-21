@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="heading"><div><p class="eyebrow">Safe status view</p><h1>{{ page_title }}</h1></div></div>
+{% if error %}<section class="notice error">{{ error }}</section>
+{% elif not result %}<section class="notice">No governed workflow result is available.</section>
+{% elif section == 'plan' %}
+<section class="panel"><h2>{{ result.plan_status }}</h2><dl class="facts"><div><dt>Add</dt><dd>{{ result.add_count if result.add_count is not none else 'N/A' }}</dd></div><div><dt>Change</dt><dd>{{ result.change_count if result.change_count is not none else 'N/A' }}</dd></div><div><dt>Destroy</dt><dd>{{ result.destroy_count if result.destroy_count is not none else 'N/A' }}</dd></div><div><dt>Terraform</dt><dd>{{ result.terraform_status }}</dd></div></dl></section>
+{% elif section == 'security' %}
+<section class="panel"><p class="eyebrow">{{ baseline }}</p><h2>Security Status: {{ result.security_status }}</h2>
+  {% if result.findings %}<div class="table-wrap"><table><thead><tr><th>Severity</th><th>Status</th><th>Resource</th><th>Safe explanation</th></tr></thead><tbody>{% for finding in result.findings %}<tr><td>{{ finding.severity }}</td><td>{{ finding.status }}</td><td>{{ finding.resource }}</td><td>{{ finding.explanation }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<p>No findings available.</p>{% endif %}
+</section>
+{% elif section == 'governance' %}
+<section class="panel"><dl class="facts">{% for label, value in [('Policy Profile',result.policy_profile),('Policy Decision',result.policy_decision),('Policy Reason',result.policy_reason),('Approval Status',result.approval_status),('Governance Status',result.governance_status)] %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{% endfor %}</dl>{% if result.authorization_status == 'AUTHORIZED' %}<p class="authorized">Authorized for future Deployment Gate</p>{% endif %}<p>Terraform Apply: NOT EXECUTED</p></section>
+{% endif %}
+{% endblock %}

@@ -1,7 +1,7 @@
 """Collecte interactive et construction des demandes multi-cloud."""
 
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable, Mapping
 
 from models import (
     ComputeDeleteResource,
@@ -64,6 +64,25 @@ OCI_COMPUTE_OUTPUT = OCI_MODULES_ROOT / "compute"
 OCI_NETWORK_OUTPUT = OCI_MODULES_ROOT / "network"
 OCI_STORAGE_OUTPUT = OCI_MODULES_ROOT / "storage"
 OCI_IAM_OUTPUT = OCI_MODULES_ROOT / "iam"
+
+
+def default_module_path(provider: str, module: str) -> str:
+    """Chemin de construction historique valide avant liaison au runtime client."""
+
+    outputs = {
+        ("gcp", "compute"): GCP_COMPUTE_OUTPUT,
+        ("gcp", "network"): GCP_NETWORK_OUTPUT,
+        ("gcp", "storage"): GCP_STORAGE_OUTPUT,
+        ("gcp", "iam"): GCP_IAM_OUTPUT,
+        ("oci", "compute"): OCI_COMPUTE_OUTPUT,
+        ("oci", "network"): OCI_NETWORK_OUTPUT,
+        ("oci", "storage"): OCI_STORAGE_OUTPUT,
+        ("oci", "iam"): OCI_IAM_OUTPUT,
+    }
+    try:
+        return str(outputs[(provider, module)].resolve())
+    except KeyError as exc:
+        raise ValueError(f"Module non supporte : {provider}/{module}") from exc
 
 
 def _ask(label: str, default: str, input_fn: InputFunction) -> str:
@@ -133,6 +152,165 @@ def build_request(
         resource=resource,
         project_id=context.project_id,
     )
+
+
+def build_create_request_from_parameters(
+    *,
+    provider: str,
+    module: str,
+    parameters: Mapping[str, Any],
+    cloud: Mapping[str, Any],
+    client_id: str,
+    environment: str,
+    module_path: str,
+):
+    """Construit les modeles Create existants depuis des donnees deja validees."""
+
+    values = dict(parameters)
+    common = {
+        "client_id": client_id,
+        "environment": environment,
+        "module_path": module_path,
+    }
+    if provider == "gcp":
+        project_id = str(cloud["project_id"])
+        if module == "compute":
+            return CreateVMRequest(
+                **common,
+                project_id=project_id,
+                resource=VMResource(
+                    resource_name=str(values["resource_name"]),
+                    name=str(values["name"]),
+                    machine_type=str(values["machine_type"]),
+                    zone=str(values["zone"]),
+                    image=str(values["image"]),
+                    network=str(values["network"]),
+                ),
+            )
+        if module == "network":
+            return CreateNetworkRequest(
+                **common,
+                project_id=project_id,
+                resource=NetworkResource(
+                    resource_name=str(values["resource_name"]),
+                    name=str(values["name"]),
+                    subnet_resource_name=str(values["subnet_resource_name"]),
+                    subnet_name=str(values["subnet_name"]),
+                    cidr=str(values["cidr"]),
+                    region=str(values["region"]),
+                ),
+            )
+        if module == "storage":
+            return CreateStorageRequest(
+                **common,
+                project_id=project_id,
+                resource=StorageResource(
+                    resource_name=str(values["resource_name"]),
+                    name=str(values["name"]),
+                    location=str(values["location"]),
+                    storage_class=str(values["storage_class"]),
+                    uniform_bucket_level_access=bool(
+                        values["uniform_bucket_level_access"]
+                    ),
+                ),
+            )
+        if module == "iam":
+            return CreateIAMRequest(
+                **common,
+                project_id=project_id,
+                resource=IAMResource(
+                    resource_name=str(values["resource_name"]),
+                    account_id=str(values["account_id"]),
+                    display_name=str(values["display_name"]),
+                    description=str(values["description"]),
+                    project_id=project_id,
+                    role=str(values["role"]),
+                ),
+            )
+    if provider == "oci":
+        compartment_id = str(cloud["compartment_ocid"])
+        if module == "compute":
+            return CreateOCIComputeRequest(
+                **common,
+                resource=OCIComputeResource(
+                    resource_name=str(values["resource_name"]),
+                    display_name=str(values["display_name"]),
+                    availability_domain=str(values["availability_domain"]),
+                    compartment_id=compartment_id,
+                    shape=str(values["shape"]),
+                    subnet_id=str(values["subnet_id"]),
+                    image_id=str(values["image_id"]),
+                    assign_public_ip=bool(values["assign_public_ip"]),
+                ),
+            )
+        if module == "network":
+            return CreateOCINetworkRequest(
+                **common,
+                resource=OCINetworkResource(
+                    resource_name=str(values["resource_name"]),
+                    display_name=str(values["display_name"]),
+                    compartment_id=compartment_id,
+                    vcn_cidr=str(values["vcn_cidr"]),
+                    dns_label=str(values["dns_label"]),
+                    subnet_resource_name=str(values["subnet_resource_name"]),
+                    subnet_display_name=str(values["subnet_display_name"]),
+                    subnet_cidr=str(values["subnet_cidr"]),
+                    subnet_dns_label=str(values["subnet_dns_label"]),
+                    availability_domain=str(values["availability_domain"]),
+                    prohibit_public_ip_on_vnic=bool(
+                        values["prohibit_public_ip_on_vnic"]
+                    ),
+                    internet_gateway_resource_name=str(
+                        values["internet_gateway_resource_name"]
+                    ),
+                    internet_gateway_display_name=str(
+                        values["internet_gateway_display_name"]
+                    ),
+                    route_table_resource_name=str(
+                        values["route_table_resource_name"]
+                    ),
+                    route_table_display_name=str(
+                        values["route_table_display_name"]
+                    ),
+                ),
+            )
+        if module == "storage":
+            return CreateOCIStorageRequest(
+                **common,
+                resource=OCIStorageResource(
+                    resource_name=str(values["resource_name"]),
+                    compartment_id=compartment_id,
+                    namespace=str(values["namespace"]),
+                    name=str(values["name"]),
+                    access_type=str(values["access_type"]),
+                    storage_tier=str(values["storage_tier"]),
+                    versioning=str(values["versioning"]),
+                    object_events_enabled=bool(values["object_events_enabled"]),
+                ),
+            )
+        if module == "iam":
+            statements = values["policy_statements"]
+            if isinstance(statements, str):
+                statements = [statements]
+            return CreateOCIIAMRequest(
+                **common,
+                resource=OCIIAMResource(
+                    tenancy_ocid=str(values["tenancy_ocid"]),
+                    user_resource_name=str(values["user_resource_name"]),
+                    user_name=str(values["user_name"]),
+                    user_description=str(values["user_description"]),
+                    group_resource_name=str(values["group_resource_name"]),
+                    group_name=str(values["group_name"]),
+                    group_description=str(values["group_description"]),
+                    membership_resource_name=str(values["membership_resource_name"]),
+                    policy_resource_name=str(values["policy_resource_name"]),
+                    policy_name=str(values["policy_name"]),
+                    policy_description=str(values["policy_description"]),
+                    policy_compartment_id=compartment_id,
+                    policy_statements=list(statements),
+                ),
+            )
+    raise ValueError(f"Create non supporte : {provider}/{module}")
 
 
 def ask_oci_compute_parameters(

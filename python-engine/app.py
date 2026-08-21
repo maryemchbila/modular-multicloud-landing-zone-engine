@@ -1,10 +1,8 @@
 """Point d'entree interactif du moteur Python."""
 
-import json
 import sys
 from collections.abc import Callable
 from contextvars import ContextVar
-from datetime import datetime
 from pathlib import Path
 
 from app_governance import run_governance_after_generation
@@ -15,7 +13,6 @@ from client_config import (
     load_client_config,
     select_runtime_configuration,
 )
-from client_paths import build_client_module_path
 from go_client import GoClientError, run_generator
 from models import ClientContext, GCPContext
 from request_builder import (
@@ -48,9 +45,15 @@ from request_builder import (
 from safe_data import redact_sensitive_data
 from state_config import detect_terraform_version, write_backend_runtime_files
 from validators import ValidationError, validate_request
+from workflow import (
+    REQUEST_DIRECTORY as SHARED_REQUEST_DIRECTORY,
+    persist_request,
+    generate_request,
+    run_governed_workflow,
+)
 
 
-REQUEST_DIRECTORY = Path(__file__).resolve().parent / "generated_requests"
+REQUEST_DIRECTORY = SHARED_REQUEST_DIRECTORY
 ACTIVE_CLIENT_CONTEXT: ContextVar[ClientContext | None] = ContextVar(
     "active_client_context",
     default=None,
@@ -108,21 +111,9 @@ def choose_action() -> str:
 
 
 def save_request(payload: dict) -> Path:
-    REQUEST_DIRECTORY.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-    filename = (
-        f"{payload['action']}_{payload['provider']}_{payload['module']}_{timestamp}.json"
-    )
-    path = REQUEST_DIRECTORY / filename
-    with path.open("x", encoding="utf-8") as request_file:
-        json.dump(
-            redact_sensitive_data(payload),
-            request_file,
-            ensure_ascii=False,
-            indent=2,
-        )
-        request_file.write("\n")
-    return path
+    """Compatibilite publique historique autour du persisteur partage."""
+
+    return persist_request(payload, REQUEST_DIRECTORY)
 
 
 def load_client_runtime(
@@ -192,23 +183,16 @@ def print_client_runtime_summary(selection: ClientRuntimeSelection) -> None:
 
 def _generate(payload: dict) -> bool:
     client_context = ACTIVE_CLIENT_CONTEXT.get()
-    if client_context is not None:
-        payload = dict(payload)
-        payload.update(client_context.context_dict())
-        payload["module_path"] = str(
-            build_client_module_path(
-                client_context.client_id,
-                client_context.environment,
-                payload["provider"],
-                payload["module"],
-            )
-        )
-    request_path = save_request(payload)
-    print(f"\nRequete valide sauvegardee : {request_path}")
+    result = generate_request(
+        payload,
+        client_context=client_context,
+        generator_fn=run_generator,
+        save_fn=save_request,
+    )
+    print(f"\nRequete valide sauvegardee : {result.request_path}")
     print("Appel du generateur Go...")
-    output = run_generator(request_path)
-    if output:
-        print(f"\n{output}")
+    if result.generator_output:
+        print(f"\n{result.generator_output}")
     return True
 
 
@@ -657,27 +641,34 @@ def main() -> int:
             print(f"\nProjet GCP cible : {gcp_context.project_id}")
         module = choose_module()
         action = choose_action()
-        context_token = ACTIVE_CLIENT_CONTEXT.set(client_context)
-        try:
-            generation_succeeded = dispatch(
-                provider,
-                module,
-                action,
-                gcp_context=gcp_context,
-            )
-        finally:
-            ACTIVE_CLIENT_CONTEXT.reset(context_token)
-        if generation_succeeded is not True:
+        def generate_selected_request() -> bool:
+            context_token = ACTIVE_CLIENT_CONTEXT.set(client_context)
+            try:
+                return dispatch(
+                    provider,
+                    module,
+                    action,
+                    gcp_context=gcp_context,
+                )
+            finally:
+                ACTIVE_CLIENT_CONTEXT.reset(context_token)
+
+        workflow_result = run_governed_workflow(
+            provider,
+            generate_selected_request,
+            run_governance_after_generation,
+            credential_valid=(
+                client_runtime is None
+                or client_runtime.credential_status == "VALID"
+            ),
+        )
+        if not workflow_result.generation_succeeded:
             print("\nGeneration : NOT_RUN")
             print("Governance : NOT_RUN")
             return 0
-        if (
-            client_runtime is not None
-            and client_runtime.credential_status != "VALID"
-        ):
+        if workflow_result.governance_skipped_reason == "CREDENTIAL_INVALID":
             print("\nGovernance : NOT_RUN_CREDENTIAL_INVALID")
             return 0
-        run_governance_after_generation(provider)
         return 0
     except ValidationError as exc:
         print(f"\nParametres invalides :\n{exc}", file=sys.stderr)

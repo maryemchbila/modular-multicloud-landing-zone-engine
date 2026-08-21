@@ -1,0 +1,10 @@
+template_id: oci-iam-standard
+provider: oci
+module: iam
+name: OCI IAM Standard
+description: OCI user, group, membership and narrow policy request.
+defaults: {}
+optional_parameters: []
+required_parameters: [tenancy_ocid, user_resource_name, user_name, user_description, group_resource_name, group_name, group_description, membership_resource_name, policy_resource_name, policy_name, policy_description, policy_statements]
+security_defaults: {}
+components: []

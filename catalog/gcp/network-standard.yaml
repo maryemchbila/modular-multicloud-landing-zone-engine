@@ -1,0 +1,10 @@
+template_id: gcp-network-standard
+provider: gcp
+module: network
+name: GCP Network Standard
+description: Custom-mode VPC and subnet request supported by the current generator.
+defaults: {}
+optional_parameters: []
+required_parameters: [resource_name, name, subnet_resource_name, subnet_name, cidr, region]
+security_defaults: {}
+components: []

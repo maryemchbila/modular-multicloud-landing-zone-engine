@@ -1,0 +1,23 @@
+template_id: gcp-landing-zone-standard
+provider: gcp
+module: landing-zone
+name: GCP Landing Zone Standard
+description: Ordered Network, Storage, IAM and Compute requests using existing modules.
+defaults:
+  storage_storage_class: STANDARD
+  storage_uniform_bucket_level_access: true
+  iam_role: roles/logging.logWriter
+  compute_image: debian-cloud/debian-12
+optional_parameters: [storage_storage_class, storage_uniform_bucket_level_access, iam_role, compute_image]
+required_parameters: [network_resource_name, network_name, network_subnet_resource_name, network_subnet_name, network_cidr, network_region, storage_resource_name, storage_name, storage_location, iam_resource_name, iam_account_id, iam_display_name, iam_description, compute_resource_name, compute_name, compute_machine_type, compute_zone, compute_network]
+security_defaults:
+  storage_uniform_bucket_level_access: true
+components:
+  - template_id: gcp-network-standard
+    parameter_prefix: network_
+  - template_id: gcp-storage-standard
+    parameter_prefix: storage_
+  - template_id: gcp-iam-standard
+    parameter_prefix: iam_
+  - template_id: gcp-compute-standard
+    parameter_prefix: compute_
