@@ -1,0 +1,16 @@
+template_id: oci-storage-standard
+provider: oci
+module: storage
+name: OCI Storage Standard
+description: Private OCI Object Storage bucket with versioning enabled.
+defaults:
+  access_type: NoPublicAccess
+  storage_tier: Standard
+  versioning: Enabled
+  object_events_enabled: true
+optional_parameters: [access_type, storage_tier, versioning, object_events_enabled]
+required_parameters: [resource_name, namespace, name]
+security_defaults:
+  access_type: NoPublicAccess
+  versioning: Enabled
+components: []

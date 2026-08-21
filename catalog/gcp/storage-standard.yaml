@@ -1,0 +1,13 @@
+template_id: gcp-storage-standard
+provider: gcp
+module: storage
+name: GCP Storage Standard
+description: Private GCS bucket request with uniform bucket-level access.
+defaults:
+  storage_class: STANDARD
+  uniform_bucket_level_access: true
+optional_parameters: [storage_class, uniform_bucket_level_access]
+required_parameters: [resource_name, name, location]
+security_defaults:
+  uniform_bucket_level_access: true
+components: []

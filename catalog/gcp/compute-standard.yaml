@@ -1,0 +1,11 @@
+template_id: gcp-compute-standard
+provider: gcp
+module: compute
+name: GCP Compute Standard
+description: Private-by-default compute request supported by the current generator.
+defaults:
+  image: debian-cloud/debian-12
+optional_parameters: [image]
+required_parameters: [resource_name, name, machine_type, zone, network]
+security_defaults: {}
+components: []

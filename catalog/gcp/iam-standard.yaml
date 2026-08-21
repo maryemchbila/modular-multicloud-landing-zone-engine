@@ -1,0 +1,11 @@
+template_id: gcp-iam-standard
+provider: gcp
+module: iam
+name: GCP IAM Standard
+description: Service account with a narrow non-owner, non-editor role.
+defaults:
+  role: roles/logging.logWriter
+optional_parameters: [role]
+required_parameters: [resource_name, account_id, display_name, description]
+security_defaults: {}
+components: []

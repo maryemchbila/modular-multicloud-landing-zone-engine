@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="heading"><div><p class="eyebrow">Governed workflow</p><h1>Result</h1></div></div>
+{% if not result %}<section class="notice">No Generate &amp; Validate result is available.</section>{% else %}
+<section class="panel result"><h2>RESULT</h2>
+  <dl class="facts">
+    {% for label, value in [
+      ('Client', result.client), ('Environment', result.environment), ('Provider', result.provider), ('Template', result.template),
+      ('Generation', result.generation), ('Terraform Status', result.terraform_status), ('Plan Status', result.plan_status),
+      ('Security Status', result.security_status), ('Policy Decision', result.policy_decision), ('Approval Status', result.approval_status),
+      ('Authorization Status', result.authorization_status), ('Governance Status', result.governance_status),
+      ('Apply', result.apply), ('Destroy', result.destroy)
+    ] %}<div><dt>{{ label }}</dt><dd><span class="status status-{{ value|lower|replace('_','-')|replace(' ','-') }}">{{ value }}</span></dd></div>{% endfor %}
+  </dl>
+  {% if result.authorization_status == 'AUTHORIZED' %}<p class="authorized">Authorized for future Deployment Gate</p><p>Terraform Apply: NOT EXECUTED</p>{% endif %}
+</section>
+{% if result.components|length > 1 %}<section class="panel"><h2>Ordered components</h2><ol>{% for item in result.components %}<li>{{ item.module|title }} — {{ item.generation }} / {{ item.governance_status }}</li>{% endfor %}</ol></section>{% endif %}
+{% endif %}
+{% endblock %}
