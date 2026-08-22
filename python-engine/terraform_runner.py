@@ -144,6 +144,87 @@ class TerraformRunner:
         )
         return result
 
+    def run_controlled_apply(
+        self,
+        plan_path: Path,
+        cwd: Path,
+        timeout: float | None = None,
+        env_overrides: Mapping[str, str] | None = None,
+    ) -> TerraformResult:
+        """Execute only the exact saved-plan apply command for J4-D."""
+
+        resolved_plan = Path(plan_path).expanduser().resolve()
+        if not resolved_plan.is_file() or resolved_plan.suffix != ".tfplan":
+            raise UnsafeTerraformCommandError("Un plan Terraform deployable est obligatoire")
+        return self._run_allowed_command(
+            ("apply", "-input=false", "-no-color", str(resolved_plan)),
+            cwd=cwd,
+            timeout=timeout,
+            env_overrides=env_overrides,
+        )
+
+    def _run_allowed_command(
+        self,
+        args: Sequence[str],
+        cwd: Path,
+        timeout: float | None,
+        env_overrides: Mapping[str, str] | None,
+    ) -> TerraformResult:
+        safe_args = tuple(args)
+        working_directory = self._resolve_working_directory(cwd)
+        executable = self._find_terraform()
+        effective_timeout = self._validate_timeout(
+            self.default_timeout if timeout is None else timeout
+        )
+        runtime_environment = self._validate_env_overrides(env_overrides)
+        child_environment = os.environ.copy()
+        child_environment.update(runtime_environment)
+        child_environment["TF_IN_AUTOMATION"] = "1"
+        child_environment["TF_INPUT"] = "0"
+        sensitive_values = tuple(runtime_environment.values())
+        started_at = time.perf_counter()
+        try:
+            completed = subprocess.run(
+                [executable, *safe_args],
+                cwd=str(working_directory),
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                check=False,
+                timeout=effective_timeout,
+                env=child_environment,
+                stdin=subprocess.DEVNULL,
+                shell=False,
+            )
+        except subprocess.TimeoutExpired as exc:
+            return TerraformResult(
+                command=executable,
+                args=safe_args,
+                working_directory=str(working_directory),
+                exit_code=None,
+                stdout=redact_sensitive_data(self._normalise_output(exc.stdout), sensitive_values=sensitive_values),
+                stderr=redact_sensitive_data(self._normalise_output(exc.stderr), sensitive_values=sensitive_values),
+                duration_seconds=time.perf_counter() - started_at,
+                timed_out=True,
+                success=False,
+            )
+        except OSError as exc:
+            raise TerraformExecutionError(
+                f"Impossible de lancer Terraform ({executable}) : {exc}"
+            ) from exc
+        return TerraformResult(
+            command=executable,
+            args=safe_args,
+            working_directory=str(working_directory),
+            exit_code=completed.returncode,
+            stdout=redact_sensitive_data(completed.stdout, sensitive_values=sensitive_values),
+            stderr=redact_sensitive_data(completed.stderr, sensitive_values=sensitive_values),
+            duration_seconds=time.perf_counter() - started_at,
+            timed_out=False,
+            success=completed.returncode == 0,
+        )
+
     def _find_terraform(self) -> str:
         executable = shutil.which(self.terraform_binary)
         if executable is None:
