@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Mapping
 from pathlib import Path
 
 from terraform_error_classifier import TerraformErrorClassifier
@@ -53,18 +54,27 @@ class TerraformValidationPipeline:
         )
         self.error_classifier = error_classifier or TerraformErrorClassifier()
 
-    def run(self, cloud: str) -> TerraformValidationPipelineResult:
+    def run(
+        self,
+        cloud: str,
+        *,
+        working_directory: Path | None = None,
+        env_overrides: Mapping[str, str] | None = None,
+    ) -> TerraformValidationPipelineResult:
         """Execute les trois etapes dans l'ordre, avec arret au premier echec."""
 
         normalised_cloud = self._normalise_cloud(cloud)
-        working_directory = self.resolve_working_directory(normalised_cloud)
+        working_directory = (
+            self.resolve_working_directory(normalised_cloud)
+            if working_directory is None
+            else self._resolve_explicit_working_directory(working_directory)
+        )
         started_at = time.perf_counter()
 
-        fmt_result = self.runner.run(
-            self.FMT_ARGS,
-            cwd=working_directory,
-            timeout=self.fmt_timeout,
-        )
+        fmt_kwargs = {"cwd": working_directory, "timeout": self.fmt_timeout}
+        if env_overrides is not None:
+            fmt_kwargs["env_overrides"] = env_overrides
+        fmt_result = self.runner.run(self.FMT_ARGS, **fmt_kwargs)
         self._log_step(normalised_cloud, "fmt", fmt_result)
         if not fmt_result.success:
             return self._build_result(
@@ -75,11 +85,10 @@ class TerraformValidationPipeline:
                 failed_step="fmt",
             )
 
-        init_result = self.runner.run(
-            self.INIT_ARGS,
-            cwd=working_directory,
-            timeout=self.init_timeout,
-        )
+        init_kwargs = {"cwd": working_directory, "timeout": self.init_timeout}
+        if env_overrides is not None:
+            init_kwargs["env_overrides"] = env_overrides
+        init_result = self.runner.run(self.INIT_ARGS, **init_kwargs)
         self._log_step(normalised_cloud, "init", init_result)
         if not init_result.success:
             return self._build_result(
@@ -91,11 +100,10 @@ class TerraformValidationPipeline:
                 failed_step="init",
             )
 
-        validate_result = self.runner.run(
-            self.VALIDATE_ARGS,
-            cwd=working_directory,
-            timeout=self.validate_timeout,
-        )
+        validate_kwargs = {"cwd": working_directory, "timeout": self.validate_timeout}
+        if env_overrides is not None:
+            validate_kwargs["env_overrides"] = env_overrides
+        validate_result = self.runner.run(self.VALIDATE_ARGS, **validate_kwargs)
         self._log_step(normalised_cloud, "validate", validate_result)
         if not validate_result.success:
             return self._build_result(
@@ -133,6 +141,15 @@ class TerraformValidationPipeline:
                 f"Le chemin Terraform n'est pas un dossier : {working_directory}"
             )
         return working_directory
+
+    @staticmethod
+    def _resolve_explicit_working_directory(working_directory: Path) -> Path:
+        resolved = Path(working_directory).expanduser().resolve()
+        if not resolved.exists() or not resolved.is_dir():
+            raise TerraformWorkingDirectoryError(
+                f"Le repertoire Terraform n'existe pas : {resolved}"
+            )
+        return resolved
 
     @classmethod
     def _normalise_cloud(cls, cloud: str) -> str:

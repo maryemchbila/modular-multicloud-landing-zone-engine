@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Mapping
 from pathlib import Path
 
 from terraform_error_classifier import TerraformErrorClassifier
@@ -49,11 +50,19 @@ class TerraformPlanPipeline:
         self,
         cloud: str,
         plan_output_path: Path | None = None,
+        *,
+        working_directory: Path | None = None,
+        env_overrides: Mapping[str, str] | None = None,
     ) -> TerraformPlanPipelineResult:
         """Valide la configuration puis lance plan uniquement si elle est valide."""
 
         started_at = time.perf_counter()
-        validation_result = self.validation_pipeline.run(cloud)
+        validation_kwargs = {}
+        if working_directory is not None:
+            validation_kwargs["working_directory"] = working_directory
+        if env_overrides is not None:
+            validation_kwargs["env_overrides"] = env_overrides
+        validation_result = self.validation_pipeline.run(cloud, **validation_kwargs)
 
         if validation_result.final_status is not TerraformPipelineStatus.PASS:
             final_status = (
@@ -76,11 +85,10 @@ class TerraformPlanPipeline:
         if plan_output_path is not None:
             resolved_plan_output_path = Path(plan_output_path).expanduser().resolve()
             plan_args.append(f"-out={resolved_plan_output_path}")
-        plan_result = self.runner.run(
-            plan_args,
-            cwd=working_directory,
-            timeout=self.plan_timeout,
-        )
+        plan_kwargs = {"cwd": working_directory, "timeout": self.plan_timeout}
+        if env_overrides is not None:
+            plan_kwargs["env_overrides"] = env_overrides
+        plan_result = self.runner.run(plan_args, **plan_kwargs)
         plan_status = self._interpret_plan_result(plan_result)
         failed_step = (
             "plan"
